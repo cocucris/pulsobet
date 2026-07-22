@@ -1,65 +1,80 @@
-import Image from "next/image";
+'use client';
+
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-[#0a0b0e] text-white flex flex-col items-center justify-center p-6 font-sans select-none relative overflow-hidden">
+      
+      {/* Glow Effects */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Brand Title */}
+      <div className="flex flex-col items-center text-center mb-10 z-10">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-4xl">📈</span>
+          <h1 className="text-5xl font-black text-amber-500 tracking-wider">PULSOBET</h1>
+        </div>
+        <p className="text-sm font-black uppercase tracking-widest text-slate-300">
+          ¡Plataforma de Trivias Deportivas en Tiempo Real para Bares y Smart TVs!
+        </p>
+      </div>
+
+      {/* Navigation Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full z-10">
+        
+        {/* Card 1: Jugador Celular */}
+        <Link 
+          href="/play/session-demo-01" 
+          className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 p-6 rounded-3xl flex flex-col items-center text-center transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-amber-500/10 group"
+        >
+          <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">📱</span>
+          <h2 className="text-xl font-black text-amber-400 mb-1">Móvil Jugador</h2>
+          <p className="text-xs text-slate-400 mb-6">
+            Escaneá el QR desde tu mesa, elegí tu apodo y votá en vivo.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          <span className="mt-auto px-6 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider group-hover:bg-amber-400 transition-colors">
+            Ingresar como Jugador
+          </span>
+        </Link>
+
+        {/* Card 2: Pantalla Smart TV */}
+        <Link 
+          href="/tv/session-demo-01" 
+          className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 p-6 rounded-3xl flex flex-col items-center text-center transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-amber-500/10 group"
+        >
+          <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">📺</span>
+          <h2 className="text-xl font-black text-amber-400 mb-1">Pantalla Smart TV</h2>
+          <p className="text-xs text-slate-400 mb-6">
+            Visualizador público con QR, trivias en vivo y Leaderboard.
+          </p>
+          <span className="mt-auto px-6 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-xs uppercase tracking-wider group-hover:bg-slate-700 transition-colors">
+            Abrir Pantalla TV
+          </span>
+        </Link>
+
+        {/* Card 3: Dashboard Admin */}
+        <Link 
+          href="/admin/local-kilkenny-test" 
+          className="bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 p-6 rounded-3xl flex flex-col items-center text-center transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-amber-500/10 group"
+        >
+          <span className="text-5xl mb-4 group-hover:scale-110 transition-transform">🎛️</span>
+          <h2 className="text-xl font-black text-amber-400 mb-1">Panel de Admin</h2>
+          <p className="text-xs text-slate-400 mb-6">
+            Lanzá trivias flash, resolvé ganadores y validá canjes de premios.
+          </p>
+          <span className="mt-auto px-6 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-black text-xs uppercase tracking-wider group-hover:bg-slate-700 transition-colors">
+            Ir al Dashboard Admin
+          </span>
+        </Link>
+
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-12 text-xs text-slate-500 font-mono z-10">
+        PULSOBET v1.0 • Powered by NestJS + Next.js + Socket.io
+      </footer>
+
+    </main>
   );
 }
