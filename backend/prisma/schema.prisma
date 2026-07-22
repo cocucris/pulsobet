@@ -1,0 +1,148 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPERADMIN
+  BAR_STAFF
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+}
+
+enum PredictionStatus {
+  PENDING
+  HIT
+  MISSED
+}
+
+model Bar {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique // URL del QR. Ej: pulso.bet/b/kilkenny
+  address     String
+  createdAt   DateTime      @default(now())
+  users       User[]        // Personal administrativo del bar
+  screens     TvScreen[]    // Pantallas vinculadas en el local
+  rewards     Reward[]      // Catálogo de premios (cervezas, picadas, etc.)
+  sessions    GameSession[] // Sesiones de juego por noche/evento
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(BAR_STAFF)
+  barId     String
+  bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+}
+
+model TvScreen {
+  id          String   @id @default(uuid())
+  barId       String
+  bar         Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+  screenName  String   // Ej: "Pantalla Barra", "Terraza Alta"
+  pairingCode String   @unique // Código de 6 dígitos para emparejar la TV sin escribir contraseñas
+  isActive    Boolean  @default(true)
+}
+
+model Match {
+  id             String        @id @default(uuid())
+  apiFootballId  Int           @unique // ID de proveedor externo para automatizar resultados
+  homeTeam       String        // Ej: "Olimpia"
+  awayTeam       String        // Ej: "Cerro Porteño"
+  startTime      DateTime
+  status         MatchStatus   @default(SCHEDULED)
+  currentMinute  Int           @default(0)
+  scoreHome      Int           @default(0)
+  scoreAway      Int           @default(0)
+  questions      LiveQuestion[]
+}
+
+model LiveQuestion {
+  id              String       @id @default(uuid())
+  matchId         String
+  match           Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  questionText    String       // Ej: "¿Quién marca el próximo gol?"
+  options         Json         // Array de opciones estructurado: [{"id": 1, "text": "Olimpia"}, {"id": 2, "text": "Cerro"}]
+  correctOptionId Int?         // ID de la opción ganadora una vez resuelto el evento
+  pointsReward    Int          @default(100)
+  imageUrl        String?      // URL de la foto o flyer de la trivia
+  isFlash         Boolean      @default(false) // Define si es un Popup de Trivia Flash exprés (15s)
+  isClosed        Boolean      @default(false) // Define si se cerró la votación pero la trivia sigue visible
+  expiresAt       DateTime     // Tiempo límite estricto para recibir predicciones
+  predictions     Prediction[]
+}
+
+enum SessionStatus {
+  WAITING
+  LIVE
+  FINISHED
+}
+
+model GameSession {
+  id          String        @id @default(uuid())
+  barId       String
+  bar         Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
+  matchId     String?
+  status      SessionStatus @default(LIVE)
+  date        DateTime      @default(now())
+  isActive    Boolean       @default(true)
+  players     Player[]
+}
+
+model Player {
+  id          String        @id @default(uuid())
+  sessionId   String
+  session     GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nickname    String        // Apodo que ingresa el cliente al escanear el QR
+  tableNumber String?       // Extraído opcionalmente del parámetro del QR (?mesa=12)
+  totalPoints Int           @default(0)
+  streakCount Int           @default(0)  // Multiplicador dinámico por aciertos consecutivos
+  predictions Prediction[]
+  claims      RewardClaim[]
+  
+  @@unique([sessionId, nickname]) // Evita duplicados conflictivos en la misma noche
+}
+
+model Prediction {
+  id             String           @id @default(uuid())
+  playerId       String
+  player         Player           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       LiveQuestion     @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  chosenOptionId Int
+  status         PredictionStatus @default(PENDING)
+  pointsEarned   Int              @default(0)
+  createdAt      DateTime         @default(now())
+}
+
+model Reward {
+  id          String   @id @default(uuid())
+  barId       String
+  bar         Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+  title       String   // Ej: "Chopp de regalo" o "Papas Fritas"
+  pointsCost  Int      @default(0) // Puntos requeridos para el canje directo
+  isInstant   Boolean  @default(false) // Define si entra en la dinámica de la "Ruleta" express
+  stock       Int      @default(999)
+  claims      RewardClaim[]
+}
+
+model RewardClaim {
+  id          String   @id @default(uuid())
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  rewardId    String
+  reward      Reward   @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  claimCode   String   @unique // Código corto de 4 dígitos (ej: "X7Y2") legible para el mozo
+  isRedeemed  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}

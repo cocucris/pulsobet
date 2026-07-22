@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pulsobet-postgres
+    environment:
+      POSTGRES_USER: pulsobet_user
+      POSTGRES_PASSWORD: pulsobet_password
+      POSTGRES_DB: pulsobet_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pulsobet-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: pulsobet-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pulsobet-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  pulsobet-network:
+    driver: bridge
