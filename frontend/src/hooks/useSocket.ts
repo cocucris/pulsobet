@@ -32,9 +32,9 @@ export const useSocket = (sessionId?: string, isTv: boolean = false) => {
 
     // 2. Inicializar la conexión inyectando el JWT en el objeto 'auth' para el handshake seguro
     const socket = io(SOCKET_URL, {
-      transports: ['websocket'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
+      transports: ['polling', 'websocket'],
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000,
       auth: {
         token: token // El WsJwtGuard del backend interceptará y validará este campo
       }

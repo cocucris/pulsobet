@@ -225,7 +225,7 @@ export default function AdminBarPage() {
         alert(`¡${isFlash ? '⚡ TRIVIA FLASH (Popup Expres)' : 'Trivia Estándar'} de ${finalPoints} Pts lanzada con éxito! 🚀`);
         setQuestionText('');
       } else {
-        alert('Error al procesar el lanzamiento de la pregunta.');
+        alert(data.message || 'Error al procesar el lanzamiento de la pregunta.');
       }
     } catch (error) {
       console.error('Error al lanzar trivia:', error);

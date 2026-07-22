@@ -96,7 +96,7 @@ export default function TvPage() {
 
   // Puntos totales en juego en la ronda
   const pointsInPlay = useMemo(() => {
-    return rawActiveQuestions.reduce((acc: number, q: any) => acc + (q.pointsReward || 150), 0) || 650;
+    return rawActiveQuestions.reduce((acc: number, q: any) => acc + (q.pointsReward || 150), 0);
   }, [rawActiveQuestions]);
 
   // Tiempo restante de Trivia Flash activa (Formato 00:15)
@@ -149,7 +149,7 @@ export default function TvPage() {
               <span className="text-xl">👥</span>
               <div className="flex flex-col">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">JUGADORES CONECTADOS</span>
-                <span className="text-xl font-black font-mono text-white">{displayLeaderboard.length || 128}</span>
+                <span className="text-xl font-black font-mono text-white">{displayLeaderboard.length}</span>
               </div>
             </div>
           </div>
