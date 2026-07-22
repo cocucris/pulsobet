@@ -57,6 +57,14 @@ export default function PlayPage() {
             localStorage.setItem(`pulsobet_player_id:${sessionId}`, data.id);
           }
         }
+      } else if (res.status === 404 || res.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(`pulsobet_player_token:${sessionId}`);
+          localStorage.removeItem(`pulsobet_player_id:${sessionId}`);
+          localStorage.removeItem(`pulsobet_nickname:${sessionId}`);
+        }
+        setToken(null);
+        setPlayerId(null);
       }
     } catch (err) {
       console.error('Error al actualizar datos del jugador:', err);

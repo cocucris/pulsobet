@@ -249,9 +249,10 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * Método público para emitir actualizaciones de puntajes (Leaderboard)
    */
   sendLeaderboardUpdate(sessionId: string, topPlayers: any[]) {
-    // Emitimos tanto a la sala general como a la específica de la TV
+    // Emitimos tanto a la sala general como a la específica de la TV y global
     this.server.to(`bar:${sessionId}`).emit('leaderboard_update', topPlayers);
     this.server.to(`bar:${sessionId}:tv`).emit('leaderboard_update', topPlayers);
+    this.server.emit('leaderboard_update', topPlayers);
   }
 
   /**
@@ -260,10 +261,12 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async broadcastNewQuestion(sessionId: string, question: any) {
     this.server.to(`bar:${sessionId}`).emit('new_question_active', question);
     this.server.to(`bar:${sessionId}:tv`).emit('new_question_active', question);
+    this.server.emit('new_question_active', question);
     
     const activeQuestions = await this.getActiveQuestionsForSession();
     this.server.to(`bar:${sessionId}`).emit('active_questions_list', activeQuestions);
     this.server.to(`bar:${sessionId}:tv`).emit('active_questions_list', activeQuestions);
+    this.server.emit('active_questions_list', activeQuestions);
   }
 
   /**
@@ -273,13 +276,16 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const activeQuestions = await this.getActiveQuestionsForSession();
     this.server.to(`bar:${sessionId}`).emit('active_questions_list', activeQuestions);
     this.server.to(`bar:${sessionId}:tv`).emit('active_questions_list', activeQuestions);
+    this.server.emit('active_questions_list', activeQuestions);
 
     if (activeQuestions.length === 0) {
       this.server.to(`bar:${sessionId}`).emit('question_resolved');
       this.server.to(`bar:${sessionId}:tv`).emit('question_resolved');
+      this.server.emit('question_resolved');
     } else {
       this.server.to(`bar:${sessionId}`).emit('new_question_active', activeQuestions[0]);
       this.server.to(`bar:${sessionId}:tv`).emit('new_question_active', activeQuestions[0]);
+      this.server.emit('new_question_active', activeQuestions[0]);
     }
   }
 }
