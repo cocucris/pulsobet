@@ -4,22 +4,18 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://localhost:3001'];
-
+  // Habilitar CORS global para permitir cualquier origen en producción (Vercel, localhost, etc.)
   app.enableCors({
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
-    },
+    origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
-  const port = process.env.PORT ?? 3001;
+  const rawPort = process.env.PORT || 3001;
+  const port = typeof rawPort === 'string' ? parseInt(rawPort, 10) : rawPort;
+
   await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Backend de PulsoBet escuchando en http://0.0.0.0:${port}`);
 }
 bootstrap();
