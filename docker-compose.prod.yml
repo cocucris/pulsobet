@@ -10,8 +10,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://neondb_owner:npg_KqEGfwR9Yv5g@ep-spring-violet-av5khtm5.c-11.us-east-1.aws.neon.tech/neondb?sslmode=require
-      - JWT_SECRET=un_secreto_ultra_seguro_para_pulsobet_2026
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=*
       - REDIS_URL=redis://redis:6379
     expose:
