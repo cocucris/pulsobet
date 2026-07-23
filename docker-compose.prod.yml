@@ -13,8 +13,7 @@ services:
       - DATABASE_URL=postgresql://neondb_owner:npg_KqEGfwR9Yv5g@ep-spring-violet-av5khtm5.c-11.us-east-1.aws.neon.tech/neondb?sslmode=require
       - JWT_SECRET=un_secreto_ultra_seguro_para_pulsobet_2026
       - ALLOWED_ORIGINS=*
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
     expose:
       - "3001"
     depends_on:
