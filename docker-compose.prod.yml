@@ -30,15 +30,17 @@ services:
     networks:
       - pulsobet-network
 
-  nginx:
-    image: nginx:alpine
-    container_name: pulsobet-nginx
+  caddy:
+    image: caddy:2-alpine
+    container_name: pulsobet-caddy
     restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - backend
     networks:
@@ -47,3 +49,7 @@ services:
 networks:
   pulsobet-network:
     driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

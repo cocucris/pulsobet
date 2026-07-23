@@ -1,0 +1,3 @@
+163.176.163.249.sslip.io {
+    reverse_proxy backend:3001
+}
