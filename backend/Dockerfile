@@ -1,30 +1,24 @@
-# Multi-stage Dockerfile for NestJS Backend (Render / Koyeb / Cloud Run)
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
+
+# Install build tools
+RUN apk add --no-cache python3 make g++
 
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm ci
+# Install all deps (including devDeps needed to build)
+RUN node --max-old-space-size=512 $(which npm) ci
 
 COPY . .
 
 RUN npx prisma generate
-RUN npm run build
 
-# Production Stage
-FROM node:20-alpine AS runner
-
-WORKDIR /app
+# Build with limited memory for low-RAM VMs
+RUN node --max-old-space-size=512 node_modules/.bin/nest build
 
 ENV NODE_ENV=production
-
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-
-EXPOSE 3001 10000
+EXPOSE 3001
 
 CMD ["node", "dist/main.js"]
