@@ -2,6 +2,7 @@ import { MatchService } from './match.service';
 import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
 import { ResolveQuestionDto } from './dto/resolve-question.dto';
+import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
 export declare class MatchController {
     private readonly matchService;
     constructor(matchService: MatchService);
@@ -12,6 +13,17 @@ export declare class MatchController {
         totalPoints: number;
         streakCount: number;
     }[]>;
+    getLiveMatch(sessionId: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.MatchStatus;
+        apiFootballId: number;
+        homeTeam: string;
+        awayTeam: string;
+        startTime: Date;
+        currentMinute: number;
+        scoreHome: number;
+        scoreAway: number;
+    } | null>;
     getActiveQuestion(sessionId: string): Promise<{
         id: string;
         questionText: string;
@@ -55,5 +67,16 @@ export declare class MatchController {
         status: string;
         event: "GOAL" | "CARD" | "PERIOD_END" | "MATCH_END";
         reason?: undefined;
+    }>;
+    updateScore(dto: UpdateMatchScoreDto): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.MatchStatus;
+        apiFootballId: number;
+        homeTeam: string;
+        awayTeam: string;
+        startTime: Date;
+        currentMinute: number;
+        scoreHome: number;
+        scoreAway: number;
     }>;
 }

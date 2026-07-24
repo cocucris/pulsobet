@@ -9,6 +9,7 @@ export const useSocket = (sessionId?: string, isTv: boolean = false) => {
   const [activeQuestion, setActiveQuestion] = useState<any>(null);
   const [activeQuestions, setActiveQuestions] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [matchData, setMatchData] = useState<any>(null);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -114,6 +115,10 @@ export const useSocket = (sessionId?: string, isTv: boolean = false) => {
       setLeaderboard(data);
     });
 
+    socket.on('match_score_update', (data: any) => {
+      setMatchData(data);
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -130,6 +135,7 @@ export const useSocket = (sessionId?: string, isTv: boolean = false) => {
     activeQuestion,
     activeQuestions,
     leaderboard,
+    matchData,
     sendPrediction,
     setActiveQuestion,
     setActiveQuestions,

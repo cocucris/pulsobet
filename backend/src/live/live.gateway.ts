@@ -140,9 +140,10 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // Notifica al bar que entró alguien
     this.server.to(roomName).emit('player_joined', { nickname: data.nickname });
 
-    // Emitir inmediatamente el Leaderboard real persistido
+    // Emitir el Leaderboard actualizado a toda la sala (incluida la TV) al unirse un nuevo jugador
     const leaderboard = await this.getLeaderboardForSession(data.sessionId);
     client.emit('leaderboard_update', leaderboard);
+    this.server.to(`bar:${data.sessionId}:tv`).emit('leaderboard_update', leaderboard);
 
     // Emitir la lista de trivias activas vigentes
     const activeQuestions = await this.getActiveQuestionsForSession();
@@ -243,6 +244,15 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`bar:${sessionId}`).emit('leaderboard_update', topPlayers);
     this.server.to(`bar:${sessionId}:tv`).emit('leaderboard_update', topPlayers);
     this.server.emit('leaderboard_update', topPlayers);
+  }
+
+  /**
+   * Método público para emitir actualizaciones del marcador en vivo
+   */
+  sendMatchUpdate(sessionId: string, matchData: any) {
+    this.server.to(`bar:${sessionId}`).emit('match_score_update', matchData);
+    this.server.to(`bar:${sessionId}:tv`).emit('match_score_update', matchData);
+    this.server.emit('match_score_update', matchData);
   }
 
   /**

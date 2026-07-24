@@ -300,6 +300,37 @@ let MatchService = class MatchService {
         }
         return { status: 'processed', event: webhookDto.event };
     }
+    async getLiveMatch(sessionId) {
+        const match = await this.prisma.match.findFirst({
+            where: { status: 'LIVE' },
+            orderBy: { startTime: 'desc' },
+        });
+        return match;
+    }
+    async updateMatchScore(dto) {
+        const match = await this.prisma.match.update({
+            where: { id: dto.matchId },
+            data: {
+                scoreHome: dto.scoreHome,
+                scoreAway: dto.scoreAway,
+                ...(dto.currentMinute !== undefined && { currentMinute: dto.currentMinute }),
+                ...(dto.status && { status: dto.status }),
+            },
+        });
+        const activeSessions = await this.prisma.gameSession.findMany({ where: { isActive: true } });
+        for (const session of activeSessions) {
+            this.liveGateway.sendMatchUpdate(session.id, {
+                matchId: match.id,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                scoreHome: match.scoreHome,
+                scoreAway: match.scoreAway,
+                currentMinute: match.currentMinute,
+                status: match.status,
+            });
+        }
+        return match;
+    }
 };
 exports.MatchService = MatchService;
 exports.MatchService = MatchService = __decorate([

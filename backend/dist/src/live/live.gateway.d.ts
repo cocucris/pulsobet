@@ -33,6 +33,7 @@ export declare class LiveGateway implements OnGatewayConnection, OnGatewayDiscon
         playerId: any;
     }>;
     sendLeaderboardUpdate(sessionId: string, topPlayers: any[]): void;
+    sendMatchUpdate(sessionId: string, matchData: any): void;
     broadcastNewQuestion(sessionId: string, question: any): Promise<void>;
     broadcastQuestionResolved(sessionId: string): Promise<void>;
 }

@@ -109,6 +109,7 @@ let LiveGateway = LiveGateway_1 = class LiveGateway {
         this.server.to(roomName).emit('player_joined', { nickname: data.nickname });
         const leaderboard = await this.getLeaderboardForSession(data.sessionId);
         client.emit('leaderboard_update', leaderboard);
+        this.server.to(`bar:${data.sessionId}:tv`).emit('leaderboard_update', leaderboard);
         const activeQuestions = await this.getActiveQuestionsForSession();
         client.emit('active_questions_list', activeQuestions);
         if (activeQuestions.length > 0) {
@@ -173,6 +174,11 @@ let LiveGateway = LiveGateway_1 = class LiveGateway {
         this.server.to(`bar:${sessionId}`).emit('leaderboard_update', topPlayers);
         this.server.to(`bar:${sessionId}:tv`).emit('leaderboard_update', topPlayers);
         this.server.emit('leaderboard_update', topPlayers);
+    }
+    sendMatchUpdate(sessionId, matchData) {
+        this.server.to(`bar:${sessionId}`).emit('match_score_update', matchData);
+        this.server.to(`bar:${sessionId}:tv`).emit('match_score_update', matchData);
+        this.server.emit('match_score_update', matchData);
     }
     async broadcastNewQuestion(sessionId, question) {
         this.server.to(`bar:${sessionId}`).emit('new_question_active', question);

@@ -4,6 +4,7 @@ import { LiveGateway } from '../live/live.gateway';
 import { RedisService } from '../redis/redis.service';
 import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
+import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
 
 @Injectable()
 export class MatchService {
@@ -380,5 +381,47 @@ export class MatchService {
     }
 
     return { status: 'processed', event: webhookDto.event };
+  }
+
+  /**
+   * Devuelve el partido EN VIVO asociado a la sesión (o el más reciente LIVE)
+   */
+  async getLiveMatch(sessionId?: string) {
+    const match = await this.prisma.match.findFirst({
+      where: { status: 'LIVE' },
+      orderBy: { startTime: 'desc' },
+    });
+    return match;
+  }
+
+  /**
+   * Actualiza el marcador manualmente y hace broadcast por WebSocket a todos
+   */
+  async updateMatchScore(dto: UpdateMatchScoreDto) {
+    const match = await this.prisma.match.update({
+      where: { id: dto.matchId },
+      data: {
+        scoreHome: dto.scoreHome,
+        scoreAway: dto.scoreAway,
+        ...(dto.currentMinute !== undefined && { currentMinute: dto.currentMinute }),
+        ...(dto.status && { status: dto.status as any }),
+      },
+    });
+
+    // Broadcast a todas las sesiones activas que muestran este partido
+    const activeSessions = await this.prisma.gameSession.findMany({ where: { isActive: true } });
+    for (const session of activeSessions) {
+      this.liveGateway.sendMatchUpdate(session.id, {
+        matchId: match.id,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        scoreHome: match.scoreHome,
+        scoreAway: match.scoreAway,
+        currentMinute: match.currentMinute,
+        status: match.status,
+      });
+    }
+
+    return match;
   }
 }

@@ -18,6 +18,7 @@ const match_service_1 = require("./match.service");
 const create_manual_question_dto_1 = require("./dto/create-manual-question.dto");
 const sports_api_webhook_dto_1 = require("./dto/sports-api-webhook.dto");
 const resolve_question_dto_1 = require("./dto/resolve-question.dto");
+const update_match_score_dto_1 = require("./dto/update-match-score.dto");
 let MatchController = class MatchController {
     matchService;
     constructor(matchService) {
@@ -25,6 +26,9 @@ let MatchController = class MatchController {
     }
     async getLeaderboard(sessionId) {
         return this.matchService.getCurrentLeaderboard(sessionId);
+    }
+    async getLiveMatch(sessionId) {
+        return this.matchService.getLiveMatch(sessionId);
     }
     async getActiveQuestion(sessionId) {
         return this.matchService.getActiveQuestions(sessionId);
@@ -38,6 +42,9 @@ let MatchController = class MatchController {
     async receiveSportsEvent(sportsApiWebhookDto) {
         return this.matchService.handleSportsWebhook(sportsApiWebhookDto);
     }
+    async updateScore(dto) {
+        return this.matchService.updateMatchScore(dto);
+    }
 };
 exports.MatchController = MatchController;
 __decorate([
@@ -47,6 +54,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], MatchController.prototype, "getLeaderboard", null);
+__decorate([
+    (0, common_1.Get)('live/:sessionId'),
+    __param(0, (0, common_1.Param)('sessionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], MatchController.prototype, "getLiveMatch", null);
 __decorate([
     (0, common_1.Get)('questions/active/:sessionId'),
     __param(0, (0, common_1.Param)('sessionId')),
@@ -81,6 +95,15 @@ __decorate([
     __metadata("design:paramtypes", [sports_api_webhook_dto_1.SportsApiWebhookDto]),
     __metadata("design:returntype", Promise)
 ], MatchController.prototype, "receiveSportsEvent", null);
+__decorate([
+    (0, common_1.Patch)('score'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({ whitelist: true })),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [update_match_score_dto_1.UpdateMatchScoreDto]),
+    __metadata("design:returntype", Promise)
+], MatchController.prototype, "updateScore", null);
 exports.MatchController = MatchController = __decorate([
     (0, common_1.Controller)('match'),
     __metadata("design:paramtypes", [match_service_1.MatchService])

@@ -1,8 +1,9 @@
-import { Controller, Post, Get, Param, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Param, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe } from '@nestjs/common';
 import { MatchService } from './match.service';
 import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
 import { ResolveQuestionDto } from './dto/resolve-question.dto';
+import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
 
 @Controller('match')
 export class MatchController {
@@ -15,6 +16,15 @@ export class MatchController {
   @Get('leaderboard/:sessionId')
   async getLeaderboard(@Param('sessionId') sessionId: string) {
     return this.matchService.getCurrentLeaderboard(sessionId);
+  }
+
+  /**
+   * GET /match/live/:sessionId
+   * Devuelve el partido EN VIVO actual con marcador
+   */
+  @Get('live/:sessionId')
+  async getLiveMatch(@Param('sessionId') sessionId: string) {
+    return this.matchService.getLiveMatch(sessionId);
   }
 
   /**
@@ -57,5 +67,16 @@ export class MatchController {
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async receiveSportsEvent(@Body() sportsApiWebhookDto: SportsApiWebhookDto) {
     return this.matchService.handleSportsWebhook(sportsApiWebhookDto);
+  }
+
+  /**
+   * PATCH /match/score
+   * Actualiza el marcador manualmente y hace broadcast por WebSocket
+   */
+  @Patch('score')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async updateScore(@Body() dto: UpdateMatchScoreDto) {
+    return this.matchService.updateMatchScore(dto);
   }
 }

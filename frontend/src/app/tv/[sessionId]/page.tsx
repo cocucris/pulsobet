@@ -19,11 +19,12 @@ export default function TvPage() {
   const sessionId = params.sessionId as string;
 
   // Nos conectamos al WebSocket segmentado para la TV del local
-  const { isConnected, leaderboard, activeQuestion, activeQuestions } = useSocket(sessionId, true);
+  const { isConnected, leaderboard, activeQuestion, activeQuestions, matchData } = useSocket(sessionId, true);
 
   const [mounted, setMounted] = useState(false);
   const [initialLeaderboard, setInitialLeaderboard] = useState<any[]>([]);
   const [initialActiveQuestions, setInitialActiveQuestions] = useState<any[]>([]);
+  const [initialMatch, setInitialMatch] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
   useEffect(() => {
@@ -49,12 +50,18 @@ export default function TvPage() {
       })
       .catch((err) => console.error('Error al cargar trivias activas iniciales:', err));
 
+    fetch(`${API_URL}/match/live/${sessionId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (data) setInitialMatch(data); })
+      .catch(() => {});
+
     // Timer de 1 segundo para sincronizar cuenta regresiva de Trivias Flash
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [sessionId]);
 
   const displayLeaderboard = leaderboard.length > 0 ? leaderboard : initialLeaderboard;
+  const displayMatch = matchData || initialMatch;
   
   const rawActiveQuestions = activeQuestions.length > 0 
     ? activeQuestions 
@@ -144,6 +151,25 @@ export default function TvPage() {
 
         {/* Bloques Estadísticos (Conectados, Puntos, Próxima Flash) */}
         <div className="flex flex-col gap-3">
+          {/* Marcador en Vivo */}
+          {displayMatch && (
+            <div className="bg-slate-900/80 border border-amber-500/30 rounded-2xl p-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block mb-2">⚽ EN VIVO</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-black text-white truncate">{displayMatch.homeTeam}</span>
+                <span className="text-xl font-black font-mono text-amber-400 bg-slate-950 px-3 py-1 rounded-xl border border-amber-500/30">
+                  {displayMatch.scoreHome} - {displayMatch.scoreAway}
+                </span>
+                <span className="text-xs font-black text-white truncate text-right">{displayMatch.awayTeam}</span>
+              </div>
+              {displayMatch.currentMinute > 0 && (
+                <span className="text-[10px] font-mono text-slate-400 mt-1 block text-center">
+                  {displayMatch.status === 'LIVE' ? `⏱ ${displayMatch.currentMinute}'` : displayMatch.status}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-xl">👥</span>

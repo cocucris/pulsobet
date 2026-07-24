@@ -3,6 +3,7 @@ import { LiveGateway } from '../live/live.gateway';
 import { RedisService } from '../redis/redis.service';
 import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
+import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
 export declare class MatchService {
     private prisma;
     private liveGateway;
@@ -69,5 +70,27 @@ export declare class MatchService {
         status: string;
         event: "GOAL" | "CARD" | "PERIOD_END" | "MATCH_END";
         reason?: undefined;
+    }>;
+    getLiveMatch(sessionId?: string): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.MatchStatus;
+        apiFootballId: number;
+        homeTeam: string;
+        awayTeam: string;
+        startTime: Date;
+        currentMinute: number;
+        scoreHome: number;
+        scoreAway: number;
+    } | null>;
+    updateMatchScore(dto: UpdateMatchScoreDto): Promise<{
+        id: string;
+        status: import("@prisma/client").$Enums.MatchStatus;
+        apiFootballId: number;
+        homeTeam: string;
+        awayTeam: string;
+        startTime: Date;
+        currentMinute: number;
+        scoreHome: number;
+        scoreAway: number;
     }>;
 }

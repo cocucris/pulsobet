@@ -143,6 +143,51 @@ export default function AdminBarPage() {
   const [activeTrivias, setActiveTrivias] = useState<Array<{ id: string; text: string; pointsReward?: number; options: { id: number; text: string }[] }>>([]);
   const [isResolving, setIsResolving] = useState(false);
 
+  // Estado del partido en vivo
+  const [liveMatch, setLiveMatch] = useState<any>(null);
+  const [isUpdatingScore, setIsUpdatingScore] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/match/live/session-demo-01`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setLiveMatch(d); })
+      .catch(() => {});
+  }, []);
+
+  const handleScoreUpdate = async (side: 'home' | 'away', delta: number) => {
+    if (!liveMatch) return;
+    const newHome = side === 'home' ? Math.max(0, liveMatch.scoreHome + delta) : liveMatch.scoreHome;
+    const newAway = side === 'away' ? Math.max(0, liveMatch.scoreAway + delta) : liveMatch.scoreAway;
+    try {
+      setIsUpdatingScore(true);
+      const res = await fetch(`${API_URL}/match/score`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: liveMatch.id, scoreHome: newHome, scoreAway: newAway, currentMinute: liveMatch.currentMinute }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setLiveMatch(updated);
+      }
+    } catch (e) {
+      console.error('Error actualizando marcador:', e);
+    } finally {
+      setIsUpdatingScore(false);
+    }
+  };
+
+  const handleMinuteUpdate = async (minute: number) => {
+    if (!liveMatch) return;
+    try {
+      const res = await fetch(`${API_URL}/match/score`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: liveMatch.id, scoreHome: liveMatch.scoreHome, scoreAway: liveMatch.scoreAway, currentMinute: minute }),
+      });
+      if (res.ok) setLiveMatch((prev: any) => ({ ...prev, currentMinute: minute }));
+    } catch (e) {}
+  };
+
   // Manejador para validar el código de 4 dígitos entregado por el mozo/cliente
   const handleRedeemCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -500,7 +545,82 @@ export default function AdminBarPage() {
 
       </div>
 
-      {/* BLOQUE C: ANALÍTICAS E INFORMES DE CANJES */}
+      {/* BLOQUE C: CONTROL DE MARCADOR EN VIVO */}
+      <div className="max-w-5xl mx-auto mt-8">
+        {liveMatch ? (
+          <section className="bg-slate-800 p-6 rounded-2xl border border-amber-500/30 shadow-xl">
+            <h2 className="text-xl font-black text-amber-500 tracking-wider mb-1">⚽ Control de Marcador en Vivo</h2>
+            <p className="text-xs text-slate-400 mb-6">Los cambios se transmiten instantáneamente a todas las pantallas y celulares.</p>
+
+            <div className="grid md:grid-cols-3 gap-6 items-center">
+              {/* Equipo Local */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-sm font-black uppercase tracking-wider text-white">{liveMatch.homeTeam}</span>
+                <span className="text-6xl font-black font-mono text-amber-400">{liveMatch.scoreHome}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleScoreUpdate('home', -1)}
+                    disabled={isUpdatingScore || liveMatch.scoreHome === 0}
+                    className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
+                  >−</button>
+                  <button
+                    onClick={() => handleScoreUpdate('home', +1)}
+                    disabled={isUpdatingScore}
+                    className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-green-500/30 text-green-400 font-black text-xl border border-slate-600 hover:border-green-500/50 transition-all disabled:opacity-40"
+                  >+</button>
+                </div>
+              </div>
+
+              {/* Centro: Minuto y Estado */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-3xl font-black font-mono text-slate-300">VS</span>
+                <div className="flex flex-col items-center gap-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Minuto</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={120}
+                    value={liveMatch.currentMinute}
+                    onChange={(e) => handleMinuteUpdate(Number(e.target.value))}
+                    className="w-20 text-center text-xl font-mono font-black py-2 bg-slate-900 border border-slate-700 rounded-xl text-amber-400 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full animate-pulse">
+                  {liveMatch.status}
+                </span>
+              </div>
+
+              {/* Equipo Visitante */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-sm font-black uppercase tracking-wider text-white">{liveMatch.awayTeam}</span>
+                <span className="text-6xl font-black font-mono text-amber-400">{liveMatch.scoreAway}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleScoreUpdate('away', -1)}
+                    disabled={isUpdatingScore || liveMatch.scoreAway === 0}
+                    className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
+                  >−</button>
+                  <button
+                    onClick={() => handleScoreUpdate('away', +1)}
+                    disabled={isUpdatingScore}
+                    className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-green-500/30 text-green-400 font-black text-xl border border-slate-600 hover:border-green-500/50 transition-all disabled:opacity-40"
+                  >+</button>
+                </div>
+              </div>
+            </div>
+
+            {isUpdatingScore && (
+              <p className="text-center text-xs text-amber-400 animate-pulse mt-4">Transmitiendo marcador a todas las pantallas...</p>
+            )}
+          </section>
+        ) : (
+          <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 text-center">
+            <p className="text-slate-400 text-sm">⚽ No hay partido EN VIVO registrado. Lanzá una trivia primero para crear uno automáticamente.</p>
+          </section>
+        )}
+      </div>
+
+      {/* BLOQUE D: ANALÍTICAS E INFORMES DE CANJES */}
       <div className="max-w-5xl mx-auto">
         <AnalyticsWidget barId={barId} refreshKey={refreshAnalyticsKey} />
       </div>
