@@ -3,7 +3,7 @@ node_modules/
 .pnpm-store/
 
 # Compilación y builds
-/backend/dist
+# /backend/dist  <- habilitado para deploy pre-compilado
 /frontend/.next
 /frontend/out
 /frontend/build
