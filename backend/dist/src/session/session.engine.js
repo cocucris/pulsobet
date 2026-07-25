@@ -153,7 +153,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             connectionStatus: 'connected',
         };
     }
-    async startMatch(sessionId, homeTeam, awayTeam) {
+    async startMatch(sessionId, homeTeam, awayTeam, status = 'SCHEDULED') {
         let session = await this.prisma.gameSession.findUnique({ where: { id: sessionId } });
         if (!session) {
             session = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
@@ -166,7 +166,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 homeTeam,
                 awayTeam,
                 startTime: new Date(),
-                status: 'LIVE',
+                status,
             },
         });
         await this.prisma.gameSession.update({
@@ -188,7 +188,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         this.eventEmitter.emit('match.started', new session_events_1.MatchStartedEvent(session.id, matchPayload, eventNumber));
         return matchPayload;
     }
-    async updateScore(matchId, scoreHome, scoreAway, homeTeam, awayTeam, currentMinute) {
+    async updateScore(matchId, scoreHome, scoreAway, homeTeam, awayTeam, currentMinute, status) {
         const dataToUpdate = { scoreHome, scoreAway };
         if (homeTeam)
             dataToUpdate.homeTeam = homeTeam;
@@ -196,6 +196,8 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             dataToUpdate.awayTeam = awayTeam;
         if (currentMinute !== undefined)
             dataToUpdate.currentMinute = currentMinute;
+        if (status)
+            dataToUpdate.status = status;
         const match = await this.prisma.match.update({
             where: { id: matchId },
             data: dataToUpdate,

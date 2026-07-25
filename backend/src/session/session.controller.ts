@@ -15,8 +15,8 @@ export class SessionController {
 
   @Post('start-match')
   async startMatch(
-    @Body() body: { sessionId: string; homeTeam: string; awayTeam: string },
+    @Body() body: { sessionId: string; homeTeam: string; awayTeam: string; status?: 'SCHEDULED' | 'LIVE' },
   ) {
-    return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam);
+    return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam, body.status || 'SCHEDULED');
   }
 }

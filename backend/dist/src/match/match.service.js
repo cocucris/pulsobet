@@ -27,7 +27,7 @@ let MatchService = class MatchService {
         return this.sessionEngine.resolveQuestionExpress(questionId, correctOptionId);
     }
     async updateMatchScore(dto) {
-        return this.sessionEngine.updateScore(dto.matchId, dto.scoreHome, dto.scoreAway, dto.homeTeam, dto.awayTeam, dto.currentMinute);
+        return this.sessionEngine.updateScore(dto.matchId, dto.scoreHome, dto.scoreAway, dto.homeTeam, dto.awayTeam, dto.currentMinute, dto.status);
     }
     async updateLiveQuestion(id, dto) {
         return this.sessionEngine.updateLiveQuestion(id, dto);

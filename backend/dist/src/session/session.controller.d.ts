@@ -7,6 +7,7 @@ export declare class SessionController {
         sessionId: string;
         homeTeam: string;
         awayTeam: string;
+        status?: 'SCHEDULED' | 'LIVE';
     }): Promise<{
         id: string;
         homeTeam: string;

@@ -24,7 +24,7 @@ let SessionController = class SessionController {
         return this.sessionEngine.buildSnapshot(sessionId, playerId);
     }
     async startMatch(body) {
-        return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam);
+        return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam, body.status || 'SCHEDULED');
     }
 };
 exports.SessionController = SessionController;

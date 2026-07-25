@@ -13,7 +13,7 @@ export declare class SessionEngine {
     private readonly logger;
     constructor(prisma: PrismaService, redisService: RedisService, sessionCache: RedisSessionCacheService, eventEmitter: EventEmitter2, scheduler: SessionScheduler);
     buildSnapshot(sessionId: string, playerId?: string): Promise<SessionSnapshot>;
-    startMatch(sessionId: string, homeTeam: string, awayTeam: string): Promise<{
+    startMatch(sessionId: string, homeTeam: string, awayTeam: string, status?: 'SCHEDULED' | 'LIVE'): Promise<{
         id: string;
         homeTeam: string;
         awayTeam: string;
@@ -22,7 +22,7 @@ export declare class SessionEngine {
         status: import("@prisma/client").$Enums.MatchStatus;
         currentMinute: number;
     }>;
-    updateScore(matchId: string, scoreHome: number, scoreAway: number, homeTeam?: string, awayTeam?: string, currentMinute?: number): Promise<{
+    updateScore(matchId: string, scoreHome: number, scoreAway: number, homeTeam?: string, awayTeam?: string, currentMinute?: number, status?: 'SCHEDULED' | 'LIVE' | 'FINISHED'): Promise<{
         id: string;
         homeTeam: string;
         awayTeam: string;

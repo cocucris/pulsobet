@@ -29,6 +29,7 @@ export class MatchService {
       dto.homeTeam,
       dto.awayTeam,
       dto.currentMinute,
+      dto.status as any,
     );
   }
 

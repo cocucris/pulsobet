@@ -270,7 +270,7 @@ export default function PlayPage() {
       <section className="w-full my-3 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl text-center">
         <div className="flex justify-between items-center mb-2">
           <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-            {matchData?.status === 'LIVE' ? 'EN VIVO' : 'PARTIDO DEL DÍA'}
+            {matchData?.status === 'LIVE' ? 'EN VIVO' : 'PARTIDO DEL DÍA • PRE-PARTIDO'}
           </span>
           <span className="text-[10px] font-mono text-slate-400">Kilkenny Pub</span>
         </div>
@@ -280,9 +280,15 @@ export default function PlayPage() {
             <div className="flex-1 text-right">
               <span className="text-base font-extrabold text-white block">{matchData.homeTeam}</span>
             </div>
-            <div className="px-4 py-1.5 mx-3 bg-slate-800 rounded-xl border border-slate-700 font-mono font-black text-xl text-amber-400 tracking-wider">
-              {matchData.scoreHome} - {matchData.scoreAway}
-            </div>
+            {matchData.status === 'LIVE' ? (
+              <div className="px-4 py-1.5 mx-3 bg-slate-800 rounded-xl border border-slate-700 font-mono font-black text-xl text-amber-400 tracking-wider">
+                {matchData.scoreHome} - {matchData.scoreAway}
+              </div>
+            ) : (
+              <div className="px-4 py-1.5 mx-3 bg-slate-800 rounded-xl border border-slate-700 font-mono font-black text-base text-slate-300 tracking-wider">
+                VS
+              </div>
+            )}
             <div className="flex-1 text-left">
               <span className="text-base font-extrabold text-slate-300 block">{matchData.awayTeam}</span>
             </div>

@@ -176,7 +176,7 @@ export class SessionEngine {
 
   // ─── COMANDOS DE PARTIDO ─────────────────────────────────────────────
 
-  async startMatch(sessionId: string, homeTeam: string, awayTeam: string) {
+  async startMatch(sessionId: string, homeTeam: string, awayTeam: string, status: 'SCHEDULED' | 'LIVE' = 'SCHEDULED') {
     let session = await this.prisma.gameSession.findUnique({ where: { id: sessionId } });
     if (!session) {
       session = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
@@ -189,7 +189,7 @@ export class SessionEngine {
         homeTeam,
         awayTeam,
         startTime: new Date(),
-        status: 'LIVE',
+        status,
       },
     });
 
@@ -227,11 +227,13 @@ export class SessionEngine {
     homeTeam?: string,
     awayTeam?: string,
     currentMinute?: number,
+    status?: 'SCHEDULED' | 'LIVE' | 'FINISHED',
   ) {
     const dataToUpdate: any = { scoreHome, scoreAway };
     if (homeTeam) dataToUpdate.homeTeam = homeTeam;
     if (awayTeam) dataToUpdate.awayTeam = awayTeam;
     if (currentMinute !== undefined) dataToUpdate.currentMinute = currentMinute;
+    if (status) dataToUpdate.status = status;
 
     const match = await this.prisma.match.update({
       where: { id: matchId },
