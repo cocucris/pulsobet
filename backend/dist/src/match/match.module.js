@@ -11,12 +11,13 @@ const common_1 = require("@nestjs/common");
 const match_service_1 = require("./match.service");
 const match_controller_1 = require("./match.controller");
 const live_module_1 = require("../live/live.module");
+const session_module_1 = require("../session/session.module");
 let MatchModule = class MatchModule {
 };
 exports.MatchModule = MatchModule;
 exports.MatchModule = MatchModule = __decorate([
     (0, common_1.Module)({
-        imports: [live_module_1.LiveModule],
+        imports: [live_module_1.LiveModule, session_module_1.SessionModule],
         controllers: [match_controller_1.MatchController],
         providers: [match_service_1.MatchService],
         exports: [match_service_1.MatchService],

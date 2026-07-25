@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from '@/hooks/useSocket';
+import { useSessionStore } from '@/store/useSessionStore';
 import { useParams } from 'next/navigation';
 import { API_URL } from '@/config/api';
 
@@ -95,17 +96,17 @@ export default function PlayPage() {
   const [selectedTriviaIndex, setSelectedTriviaIndex] = useState(0);
 
   // Hook WebSockets
-  const { isConnected, activeQuestion, activeQuestions, leaderboard, sendPrediction } = useSocket(
-    sessionId,
-    false
-  );
+  const { sendPrediction } = useSocket(sessionId, false, false);
 
-  const allActiveQuestions = activeQuestions.length > 0 
-    ? activeQuestions 
-    : (activeQuestion ? [activeQuestion] : []);
+  const snapshot = useSessionStore((s) => s.snapshot);
+  const isConnected = useSessionStore((s) => s.isConnected);
 
-  const currentTrivia = allActiveQuestions[selectedTriviaIndex] || allActiveQuestions[0] || null;
+  const currentTrivia = snapshot?.currentTrivia || null;
+  const allActiveQuestions = currentTrivia ? [currentTrivia] : [];
   const isCurrentTriviaAnswered = currentTrivia ? answeredQuestionIds.includes(currentTrivia.id) : false;
+
+  const matchData = snapshot?.match;
+  const leaderboard = snapshot?.leaderboardTop10 || [];
 
   // Escuchar transmisiones del Leaderboard por WebSockets en tiempo real
   useEffect(() => {
@@ -119,10 +120,8 @@ export default function PlayPage() {
         setTotalPoints(myRank.totalPoints);
       }
     }
-    if (nickname || playerId) {
-      refreshPlayerData(playerId, nickname);
-    }
-  }, [leaderboard, playerId, nickname, refreshPlayerData]);
+  }, [leaderboard, playerId, nickname]);
+
 
   // Registro de apodo
   const handleOnboarding = async (e: React.FormEvent) => {

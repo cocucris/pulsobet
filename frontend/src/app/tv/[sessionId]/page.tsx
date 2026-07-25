@@ -6,6 +6,8 @@ import { useParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { API_URL } from '@/config/api';
 
+import { useSessionStore } from '@/store/useSessionStore';
+
 // Imágenes predeterminadas de respaldo por si no se adjunta flyer
 const DEFAULT_IMAGES = [
   'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=500&q=80', // Balón
@@ -18,54 +20,35 @@ export default function TvPage() {
   const params = useParams();
   const sessionId = params.sessionId as string;
 
-  // Nos conectamos al WebSocket segmentado para la TV del local
-  const { isConnected, leaderboard, activeQuestion, activeQuestions, matchData } = useSocket(sessionId, true);
+  // Conexión WebSocket para TV
+  useSocket(sessionId, true, false);
+
+  const snapshot = useSessionStore((s) => s.snapshot);
+  const isConnected = useSessionStore((s) => s.isConnected);
 
   const [mounted, setMounted] = useState(false);
-  const [initialLeaderboard, setInitialLeaderboard] = useState<any[]>([]);
-  const [initialActiveQuestions, setInitialActiveQuestions] = useState<any[]>([]);
-  const [initialMatch, setInitialMatch] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
   useEffect(() => {
     setMounted(true);
 
-    fetch(`${API_URL}/match/leaderboard/${sessionId}`)
-      .then((res) => (res.ok && res.status !== 204 ? res.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) setInitialLeaderboard(data);
-      })
-      .catch((err) => console.error('Error al cargar leaderboard inicial:', err));
-
-    fetch(`${API_URL}/match/questions/active/${sessionId}`)
-      .then((res) => (res.ok && res.status !== 204 ? res.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setInitialActiveQuestions(data);
-        } else if (data && data.id) {
-          setInitialActiveQuestions([data]);
-        } else {
-          setInitialActiveQuestions([]);
-        }
-      })
-      .catch((err) => console.error('Error al cargar trivias activas iniciales:', err));
-
-    fetch(`${API_URL}/match/live/${sessionId}`)
+    fetch(`${API_URL}/session/snapshot/${sessionId}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (data) setInitialMatch(data); })
-      .catch(() => {});
+      .then((data) => {
+        if (data) useSessionStore.getState().applySnapshot(data);
+      })
+      .catch((err) => console.error('Error al cargar snapshot inicial TV:', err));
 
-    // Timer de 1 segundo para sincronizar cuenta regresiva de Trivias Flash
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [sessionId]);
 
-  const displayLeaderboard = leaderboard.length > 0 ? leaderboard : initialLeaderboard;
-  const displayMatch = matchData || initialMatch;
-  
-  const rawActiveQuestions = activeQuestions.length > 0 
-    ? activeQuestions 
-    : (initialActiveQuestions.length > 0 ? initialActiveQuestions : (activeQuestion ? [activeQuestion] : []));
+  const displayLeaderboard = snapshot?.leaderboardTop10 || [];
+  const displayMatch = snapshot?.match || null;
+  const currentTrivia = snapshot?.currentTrivia || null;
+
+  const rawActiveQuestions = currentTrivia ? [currentTrivia] : [];
+
 
   // Separar Trivias Estándar vs Trivias Flash ⚡ Activas (con tiempo restante > 0)
   const flashQuestion = useMemo(() => {

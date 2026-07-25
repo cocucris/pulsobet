@@ -1,0 +1,92 @@
+export declare class MatchScoreUpdatedEvent {
+    readonly sessionId: string;
+    readonly scoreHome: number;
+    readonly scoreAway: number;
+    readonly homeTeam: string;
+    readonly awayTeam: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, scoreHome: number, scoreAway: number, homeTeam: string, awayTeam: string, eventNumber: number);
+}
+export declare class TriviaCreatedEvent {
+    readonly sessionId: string;
+    readonly trivia: any;
+    readonly eventNumber: number;
+    constructor(sessionId: string, trivia: any, eventNumber: number);
+}
+export declare class TriviaOpenedEvent {
+    readonly sessionId: string;
+    readonly trivia: any;
+    readonly eventNumber: number;
+    constructor(sessionId: string, trivia: any, eventNumber: number);
+}
+export declare class TriviaClosedEvent {
+    readonly sessionId: string;
+    readonly triviaId: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, triviaId: string, eventNumber: number);
+}
+export declare class TriviaResultEvent {
+    readonly sessionId: string;
+    readonly triviaId: string;
+    readonly correctOptionId: number;
+    readonly winnersCount: number;
+    readonly leaderboard: any[];
+    readonly eventNumber: number;
+    constructor(sessionId: string, triviaId: string, correctOptionId: number, winnersCount: number, leaderboard: any[], eventNumber: number);
+}
+export declare class PlayerJoinedEvent {
+    readonly sessionId: string;
+    readonly player: {
+        id: string;
+        nickname: string;
+        tableNumber: string | null;
+    };
+    readonly eventNumber: number;
+    constructor(sessionId: string, player: {
+        id: string;
+        nickname: string;
+        tableNumber: string | null;
+    }, eventNumber: number);
+}
+export declare class PlayerVotedEvent {
+    readonly sessionId: string;
+    readonly triviaId: string;
+    readonly options: any[];
+    readonly totalVotes: number;
+    readonly eventNumber: number;
+    constructor(sessionId: string, triviaId: string, options: any[], totalVotes: number, eventNumber: number);
+}
+export declare class LeaderboardUpdatedEvent {
+    readonly sessionId: string;
+    readonly leaderboard: any[];
+    readonly eventNumber: number;
+    constructor(sessionId: string, leaderboard: any[], eventNumber: number);
+}
+export declare class RewardReservedEvent {
+    readonly sessionId: string;
+    readonly claimCode: string;
+    readonly rewardTitle: string;
+    readonly playerNickname: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, claimCode: string, rewardTitle: string, playerNickname: string, eventNumber: number);
+}
+export declare class RewardDeliveredEvent {
+    readonly sessionId: string;
+    readonly claimCode: string;
+    readonly rewardTitle: string;
+    readonly playerNickname: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, claimCode: string, rewardTitle: string, playerNickname: string, eventNumber: number);
+}
+export declare class MatchStartedEvent {
+    readonly sessionId: string;
+    readonly match: any;
+    readonly eventNumber: number;
+    constructor(sessionId: string, match: any, eventNumber: number);
+}
+export declare class MatchFinishedEvent {
+    readonly sessionId: string;
+    readonly match: any;
+    readonly eventNumber: number;
+    constructor(sessionId: string, match: any, eventNumber: number);
+}

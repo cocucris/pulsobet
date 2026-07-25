@@ -9,11 +9,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LiveModule = void 0;
 const common_1 = require("@nestjs/common");
 const live_gateway_1 = require("./live.gateway");
+const prisma_module_1 = require("../prisma/prisma.module");
+const redis_module_1 = require("../redis/redis.module");
+const session_module_1 = require("../session/session.module");
 let LiveModule = class LiveModule {
 };
 exports.LiveModule = LiveModule;
 exports.LiveModule = LiveModule = __decorate([
     (0, common_1.Module)({
+        imports: [prisma_module_1.PrismaModule, redis_module_1.RedisModule, (0, common_1.forwardRef)(() => session_module_1.SessionModule)],
         providers: [live_gateway_1.LiveGateway],
         exports: [live_gateway_1.LiveGateway],
     })

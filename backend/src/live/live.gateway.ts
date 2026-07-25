@@ -7,11 +7,12 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
-import { UseGuards, Logger } from '@nestjs/common';
+import { UseGuards, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WsJwtGuard } from '../auth/ws-jwt.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { SessionEngine } from '../session/session.engine';
 
 @WebSocketGateway({
   cors: {
@@ -28,6 +29,8 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private prisma: PrismaService,
     private redisService: RedisService,
+    @Inject(forwardRef(() => SessionEngine))
+    private sessionEngine: SessionEngine,
   ) {}
 
   handleConnection(client: Socket) {
@@ -39,147 +42,81 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
-   * Helper para obtener y sincronizar la tabla de posiciones desde la base de datos persistente
+   * Único método de broadcast centralizado para la sala del bar
    */
-  private async getLeaderboardForSession(sessionId: string) {
-    let targetSessionId = sessionId;
-
-    let session = await this.prisma.gameSession.findUnique({
-      where: { id: sessionId },
-    });
-
-    if (!session) {
-      session = await this.prisma.gameSession.findFirst({
-        where: { isActive: true },
-      });
-      if (session) targetSessionId = session.id;
-    }
-
-    const topPlayers = await this.prisma.player.findMany({
-      where: { sessionId: targetSessionId },
-      orderBy: { totalPoints: 'desc' },
-      take: 10,
-    });
-
-    for (const p of topPlayers) {
-      await this.redisService.setPlayerScore(targetSessionId, p.id, p.totalPoints);
-    }
-
-    return topPlayers.map((p) => ({
-      id: p.id,
-      nickname: p.nickname,
-      tableNumber: p.tableNumber,
-      totalPoints: p.totalPoints,
-      streakCount: p.streakCount,
-    }));
+  broadcastToSession(sessionId: string, event: string, payload: any): void {
+    // Todos los clientes (admin, tv, celulares) de una sesión pertenecen a bar:{sessionId}
+    this.server.to(`bar:${sessionId}`).emit(event, payload);
+    // Compatibilidad adicional para sub-salas específicas si existen
+    this.server.to(`bar:${sessionId}:tv`).emit(event, payload);
   }
 
   /**
-   * Helper para obtener las preguntas activas vigentes (sin resolver y no expiradas) con tendencias de votación
+   * Heartbeat PING / PONG
    */
-  private async getActiveQuestionsForSession() {
-    const questions = await this.prisma.liveQuestion.findMany({
-      where: {
-        correctOptionId: null,
-      },
-      orderBy: { expiresAt: 'desc' },
-    });
-
-    const enriched = await Promise.all(
-      questions.map(async (q) => {
-        const voteCounts = await this.prisma.prediction.groupBy({
-          by: ['chosenOptionId'],
-          where: { questionId: q.id },
-          _count: { id: true },
-        });
-
-        const totalVotes = voteCounts.reduce((sum, item) => sum + item._count.id, 0);
-        const optionsArray = Array.isArray(q.options) ? (q.options as any[]) : [];
-
-        const optionsWithStats = optionsArray.map((opt) => {
-          const match = voteCounts.find((v) => Number(v.chosenOptionId) === Number(opt.id));
-          const count = match ? match._count.id : 0;
-          const percentage = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-          return {
-            ...opt,
-            count,
-            percentage,
-          };
-        });
-
-        return {
-          id: q.id,
-          questionText: q.questionText,
-          options: optionsWithStats,
-          pointsReward: q.pointsReward,
-          imageUrl: q.imageUrl,
-          isFlash: q.isFlash,
-          isClosed: q.isClosed,
-          expiresAt: q.expiresAt,
-          totalVotes,
-        };
-      })
-    );
-
-    return enriched;
+  @SubscribeMessage('PING')
+  handlePing(@ConnectedSocket() client: Socket) {
+    client.emit('PONG', { serverTime: new Date().toISOString() });
   }
 
   /**
-   * Un jugador se une a la sesión de un bar específico
+   * JOIN_SESSION unificado (Soporta Snapshot completo de hidratación)
+   */
+  @SubscribeMessage('JOIN_SESSION')
+  async handleJoinSession(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { sessionId: string; type: 'player' | 'tv' | 'admin'; nickname?: string; playerId?: string },
+  ) {
+    const roomName = `bar:${data.sessionId}`;
+    client.join(roomName);
+    if (data.type === 'tv') {
+      client.join(`${roomName}:tv`);
+    }
+
+    this.logger.log(`Cliente [${data.type}] se unió a la sala: ${roomName}`);
+
+    // Construir y emitir el snapshot completo al cliente que entra/reconecta
+    try {
+      const snapshot = await this.sessionEngine.buildSnapshot(data.sessionId, data.playerId);
+      client.emit('SNAPSHOT', snapshot);
+    } catch (err) {
+      this.logger.warn(`Error al construir snapshot para ${data.sessionId}:`, err);
+    }
+
+    if (data.type === 'player' && data.nickname) {
+      this.broadcastToSession(data.sessionId, 'player_joined', { nickname: data.nickname });
+    }
+
+    return { status: 'success', message: `Unido a la sala ${roomName}` };
+  }
+
+  /**
+   * Compatibilidad hacia atrás: join_bar_session
    */
   @SubscribeMessage('join_bar_session')
   async handleJoinBar(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { sessionId: string; nickname: string },
   ) {
-    const roomName = `bar:${data.sessionId}`;
-    client.join(roomName);
-    
-    this.logger.log(`Jugador [${data.nickname}] se unió a la sala: ${roomName}`);
-    
-    // Notifica al bar que entró alguien
-    this.server.to(roomName).emit('player_joined', { nickname: data.nickname });
-
-    // Emitir el Leaderboard actualizado a toda la sala (incluida la TV) al unirse un nuevo jugador
-    const leaderboard = await this.getLeaderboardForSession(data.sessionId);
-    client.emit('leaderboard_update', leaderboard);
-    this.server.to(`bar:${data.sessionId}:tv`).emit('leaderboard_update', leaderboard);
-
-    // Emitir la lista de trivias activas vigentes
-    const activeQuestions = await this.getActiveQuestionsForSession();
-    client.emit('active_questions_list', activeQuestions);
-    if (activeQuestions.length > 0) {
-      client.emit('new_question_active', activeQuestions[0]);
-    }
-    
-    return { status: 'success', message: `Unido a la sala ${roomName}` };
+    return this.handleJoinSession(client, {
+      sessionId: data.sessionId,
+      type: 'player',
+      nickname: data.nickname,
+    });
   }
 
   /**
-   * Una pantalla de TV se vincula a la sesión del bar
+   * Compatibilidad hacia atrás: join_tv_screen
    */
   @SubscribeMessage('join_tv_screen')
   async handleJoinTv(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { sessionId: string },
   ) {
-    const roomName = `bar:${data.sessionId}:tv`;
-    client.join(roomName);
-    
-    this.logger.log(`Pantalla de TV vinculada a la sala: ${roomName}`);
-
-    // Emitir inmediatamente el Leaderboard real persistido al reconectar la TV o al hacer F5
-    const leaderboard = await this.getLeaderboardForSession(data.sessionId);
-    client.emit('leaderboard_update', leaderboard);
-
-    // Emitir la lista de trivias activas vigentes al hacer F5
-    const activeQuestions = await this.getActiveQuestionsForSession();
-    client.emit('active_questions_list', activeQuestions);
-    if (activeQuestions.length > 0) {
-      client.emit('new_question_active', activeQuestions[0]);
-    }
-
-    return { status: 'success', message: `TV vinculada a la sala ${roomName}` };
+    return this.handleJoinSession(client, {
+      sessionId: data.sessionId,
+      type: 'tv',
+    });
   }
 
   /**
@@ -191,101 +128,26 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { questionId: string; chosenOptionId: number },
   ) {
-    // Recuperamos los datos validados del payload del JWT de forma segura
-    const user = (client as any).user; 
-    
-    this.logger.log(`Predicción segura recibida del Jugador ${user?.sub} en la sesión ${user?.sessionId}`);
-    
-    if (user?.sub && data.questionId && data.chosenOptionId !== undefined) {
-      try {
-        const optionIdNum = Number(data.chosenOptionId);
-
-        const existing = await this.prisma.prediction.findFirst({
-          where: { playerId: user.sub, questionId: data.questionId },
-        });
-
-        if (existing) {
-          await this.prisma.prediction.update({
-            where: { id: existing.id },
-            data: { chosenOptionId: optionIdNum },
-          });
-          this.logger.log(`Predicción actualizada en DB para Jugador ${user.sub}`);
-        } else {
-          await this.prisma.prediction.create({
-            data: {
-              playerId: user.sub,
-              questionId: data.questionId,
-              chosenOptionId: optionIdNum,
-              status: 'PENDING',
-            },
-          });
-          this.logger.log(`Predicción guardada en DB para Jugador ${user.sub}`);
-        }
-
-        const activeQuestions = await this.getActiveQuestionsForSession();
-        if (user?.sessionId) {
-          this.server.to(`bar:${user.sessionId}`).emit('active_questions_list', activeQuestions);
-          this.server.to(`bar:${user.sessionId}:tv`).emit('active_questions_list', activeQuestions);
-        }
-        this.server.emit('active_questions_list', activeQuestions);
-      } catch (err) {
-        this.logger.error('Error al guardar la predicción en DB:', err);
-      }
+    const user = (client as any).user;
+    if (user?.sub && user?.sessionId && data.questionId && data.chosenOptionId !== undefined) {
+      await this.sessionEngine.submitVote(user.sessionId, user.sub, data.questionId, data.chosenOptionId);
     }
-    
     return { status: 'received', playerId: user?.sub };
   }
 
-  /**
-   * Método público para emitir actualizaciones de puntajes (Leaderboard)
-   */
   sendLeaderboardUpdate(sessionId: string, topPlayers: any[]) {
-    // Emitimos tanto a la sala general como a la específica de la TV y global
-    this.server.to(`bar:${sessionId}`).emit('leaderboard_update', topPlayers);
-    this.server.to(`bar:${sessionId}:tv`).emit('leaderboard_update', topPlayers);
-    this.server.emit('leaderboard_update', topPlayers);
+    this.broadcastToSession(sessionId, 'leaderboard_update', topPlayers);
   }
 
-  /**
-   * Método público para emitir actualizaciones del marcador en vivo
-   */
   sendMatchUpdate(sessionId: string, matchData: any) {
-    this.server.to(`bar:${sessionId}`).emit('match_score_update', matchData);
-    this.server.to(`bar:${sessionId}:tv`).emit('match_score_update', matchData);
-    this.server.emit('match_score_update', matchData);
+    this.broadcastToSession(sessionId, 'match_score_update', matchData);
   }
 
-  /**
-   * Método público para lanzar una nueva pregunta en vivo a los celulares y a las TVs
-   */
   async broadcastNewQuestion(sessionId: string, question: any) {
-    this.server.to(`bar:${sessionId}`).emit('new_question_active', question);
-    this.server.to(`bar:${sessionId}:tv`).emit('new_question_active', question);
-    this.server.emit('new_question_active', question);
-    
-    const activeQuestions = await this.getActiveQuestionsForSession();
-    this.server.to(`bar:${sessionId}`).emit('active_questions_list', activeQuestions);
-    this.server.to(`bar:${sessionId}:tv`).emit('active_questions_list', activeQuestions);
-    this.server.emit('active_questions_list', activeQuestions);
+    this.broadcastToSession(sessionId, 'new_question_active', question);
   }
 
-  /**
-   * Método público para notificar la resolución/cierre de una pregunta activa
-   */
   async broadcastQuestionResolved(sessionId: string) {
-    const activeQuestions = await this.getActiveQuestionsForSession();
-    this.server.to(`bar:${sessionId}`).emit('active_questions_list', activeQuestions);
-    this.server.to(`bar:${sessionId}:tv`).emit('active_questions_list', activeQuestions);
-    this.server.emit('active_questions_list', activeQuestions);
-
-    if (activeQuestions.length === 0) {
-      this.server.to(`bar:${sessionId}`).emit('question_resolved');
-      this.server.to(`bar:${sessionId}:tv`).emit('question_resolved');
-      this.server.emit('question_resolved');
-    } else {
-      this.server.to(`bar:${sessionId}`).emit('new_question_active', activeQuestions[0]);
-      this.server.to(`bar:${sessionId}:tv`).emit('new_question_active', activeQuestions[0]);
-      this.server.emit('new_question_active', activeQuestions[0]);
-    }
+    this.broadcastToSession(sessionId, 'question_resolved', {});
   }
 }

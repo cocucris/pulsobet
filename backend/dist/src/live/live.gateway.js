@@ -20,14 +20,17 @@ const socket_io_1 = require("socket.io");
 const ws_jwt_guard_1 = require("../auth/ws-jwt.guard");
 const prisma_service_1 = require("../prisma/prisma.service");
 const redis_service_1 = require("../redis/redis.service");
+const session_engine_1 = require("../session/session.engine");
 let LiveGateway = LiveGateway_1 = class LiveGateway {
     prisma;
     redisService;
+    sessionEngine;
     server;
     logger = new common_1.Logger(LiveGateway_1.name);
-    constructor(prisma, redisService) {
+    constructor(prisma, redisService, sessionEngine) {
         this.prisma = prisma;
         this.redisService = redisService;
+        this.sessionEngine = sessionEngine;
     }
     handleConnection(client) {
         this.logger.log(`Cliente conectado: ${client.id}`);
@@ -35,175 +38,63 @@ let LiveGateway = LiveGateway_1 = class LiveGateway {
     handleDisconnect(client) {
         this.logger.log(`Cliente desconectado: ${client.id}`);
     }
-    async getLeaderboardForSession(sessionId) {
-        let targetSessionId = sessionId;
-        let session = await this.prisma.gameSession.findUnique({
-            where: { id: sessionId },
-        });
-        if (!session) {
-            session = await this.prisma.gameSession.findFirst({
-                where: { isActive: true },
-            });
-            if (session)
-                targetSessionId = session.id;
-        }
-        const topPlayers = await this.prisma.player.findMany({
-            where: { sessionId: targetSessionId },
-            orderBy: { totalPoints: 'desc' },
-            take: 10,
-        });
-        for (const p of topPlayers) {
-            await this.redisService.setPlayerScore(targetSessionId, p.id, p.totalPoints);
-        }
-        return topPlayers.map((p) => ({
-            id: p.id,
-            nickname: p.nickname,
-            tableNumber: p.tableNumber,
-            totalPoints: p.totalPoints,
-            streakCount: p.streakCount,
-        }));
+    broadcastToSession(sessionId, event, payload) {
+        this.server.to(`bar:${sessionId}`).emit(event, payload);
+        this.server.to(`bar:${sessionId}:tv`).emit(event, payload);
     }
-    async getActiveQuestionsForSession() {
-        const questions = await this.prisma.liveQuestion.findMany({
-            where: {
-                correctOptionId: null,
-            },
-            orderBy: { expiresAt: 'desc' },
-        });
-        const enriched = await Promise.all(questions.map(async (q) => {
-            const voteCounts = await this.prisma.prediction.groupBy({
-                by: ['chosenOptionId'],
-                where: { questionId: q.id },
-                _count: { id: true },
-            });
-            const totalVotes = voteCounts.reduce((sum, item) => sum + item._count.id, 0);
-            const optionsArray = Array.isArray(q.options) ? q.options : [];
-            const optionsWithStats = optionsArray.map((opt) => {
-                const match = voteCounts.find((v) => Number(v.chosenOptionId) === Number(opt.id));
-                const count = match ? match._count.id : 0;
-                const percentage = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-                return {
-                    ...opt,
-                    count,
-                    percentage,
-                };
-            });
-            return {
-                id: q.id,
-                questionText: q.questionText,
-                options: optionsWithStats,
-                pointsReward: q.pointsReward,
-                imageUrl: q.imageUrl,
-                isFlash: q.isFlash,
-                isClosed: q.isClosed,
-                expiresAt: q.expiresAt,
-                totalVotes,
-            };
-        }));
-        return enriched;
+    handlePing(client) {
+        client.emit('PONG', { serverTime: new Date().toISOString() });
     }
-    async handleJoinBar(client, data) {
+    async handleJoinSession(client, data) {
         const roomName = `bar:${data.sessionId}`;
         client.join(roomName);
-        this.logger.log(`Jugador [${data.nickname}] se unió a la sala: ${roomName}`);
-        this.server.to(roomName).emit('player_joined', { nickname: data.nickname });
-        const leaderboard = await this.getLeaderboardForSession(data.sessionId);
-        client.emit('leaderboard_update', leaderboard);
-        this.server.to(`bar:${data.sessionId}:tv`).emit('leaderboard_update', leaderboard);
-        const activeQuestions = await this.getActiveQuestionsForSession();
-        client.emit('active_questions_list', activeQuestions);
-        if (activeQuestions.length > 0) {
-            client.emit('new_question_active', activeQuestions[0]);
+        if (data.type === 'tv') {
+            client.join(`${roomName}:tv`);
+        }
+        this.logger.log(`Cliente [${data.type}] se unió a la sala: ${roomName}`);
+        try {
+            const snapshot = await this.sessionEngine.buildSnapshot(data.sessionId, data.playerId);
+            client.emit('SNAPSHOT', snapshot);
+        }
+        catch (err) {
+            this.logger.warn(`Error al construir snapshot para ${data.sessionId}:`, err);
+        }
+        if (data.type === 'player' && data.nickname) {
+            this.broadcastToSession(data.sessionId, 'player_joined', { nickname: data.nickname });
         }
         return { status: 'success', message: `Unido a la sala ${roomName}` };
     }
+    async handleJoinBar(client, data) {
+        return this.handleJoinSession(client, {
+            sessionId: data.sessionId,
+            type: 'player',
+            nickname: data.nickname,
+        });
+    }
     async handleJoinTv(client, data) {
-        const roomName = `bar:${data.sessionId}:tv`;
-        client.join(roomName);
-        this.logger.log(`Pantalla de TV vinculada a la sala: ${roomName}`);
-        const leaderboard = await this.getLeaderboardForSession(data.sessionId);
-        client.emit('leaderboard_update', leaderboard);
-        const activeQuestions = await this.getActiveQuestionsForSession();
-        client.emit('active_questions_list', activeQuestions);
-        if (activeQuestions.length > 0) {
-            client.emit('new_question_active', activeQuestions[0]);
-        }
-        return { status: 'success', message: `TV vinculada a la sala ${roomName}` };
+        return this.handleJoinSession(client, {
+            sessionId: data.sessionId,
+            type: 'tv',
+        });
     }
     async handlePrediction(client, data) {
         const user = client.user;
-        this.logger.log(`Predicción segura recibida del Jugador ${user?.sub} en la sesión ${user?.sessionId}`);
-        if (user?.sub && data.questionId && data.chosenOptionId !== undefined) {
-            try {
-                const optionIdNum = Number(data.chosenOptionId);
-                const existing = await this.prisma.prediction.findFirst({
-                    where: { playerId: user.sub, questionId: data.questionId },
-                });
-                if (existing) {
-                    await this.prisma.prediction.update({
-                        where: { id: existing.id },
-                        data: { chosenOptionId: optionIdNum },
-                    });
-                    this.logger.log(`Predicción actualizada en DB para Jugador ${user.sub}`);
-                }
-                else {
-                    await this.prisma.prediction.create({
-                        data: {
-                            playerId: user.sub,
-                            questionId: data.questionId,
-                            chosenOptionId: optionIdNum,
-                            status: 'PENDING',
-                        },
-                    });
-                    this.logger.log(`Predicción guardada en DB para Jugador ${user.sub}`);
-                }
-                const activeQuestions = await this.getActiveQuestionsForSession();
-                if (user?.sessionId) {
-                    this.server.to(`bar:${user.sessionId}`).emit('active_questions_list', activeQuestions);
-                    this.server.to(`bar:${user.sessionId}:tv`).emit('active_questions_list', activeQuestions);
-                }
-                this.server.emit('active_questions_list', activeQuestions);
-            }
-            catch (err) {
-                this.logger.error('Error al guardar la predicción en DB:', err);
-            }
+        if (user?.sub && user?.sessionId && data.questionId && data.chosenOptionId !== undefined) {
+            await this.sessionEngine.submitVote(user.sessionId, user.sub, data.questionId, data.chosenOptionId);
         }
         return { status: 'received', playerId: user?.sub };
     }
     sendLeaderboardUpdate(sessionId, topPlayers) {
-        this.server.to(`bar:${sessionId}`).emit('leaderboard_update', topPlayers);
-        this.server.to(`bar:${sessionId}:tv`).emit('leaderboard_update', topPlayers);
-        this.server.emit('leaderboard_update', topPlayers);
+        this.broadcastToSession(sessionId, 'leaderboard_update', topPlayers);
     }
     sendMatchUpdate(sessionId, matchData) {
-        this.server.to(`bar:${sessionId}`).emit('match_score_update', matchData);
-        this.server.to(`bar:${sessionId}:tv`).emit('match_score_update', matchData);
-        this.server.emit('match_score_update', matchData);
+        this.broadcastToSession(sessionId, 'match_score_update', matchData);
     }
     async broadcastNewQuestion(sessionId, question) {
-        this.server.to(`bar:${sessionId}`).emit('new_question_active', question);
-        this.server.to(`bar:${sessionId}:tv`).emit('new_question_active', question);
-        this.server.emit('new_question_active', question);
-        const activeQuestions = await this.getActiveQuestionsForSession();
-        this.server.to(`bar:${sessionId}`).emit('active_questions_list', activeQuestions);
-        this.server.to(`bar:${sessionId}:tv`).emit('active_questions_list', activeQuestions);
-        this.server.emit('active_questions_list', activeQuestions);
+        this.broadcastToSession(sessionId, 'new_question_active', question);
     }
     async broadcastQuestionResolved(sessionId) {
-        const activeQuestions = await this.getActiveQuestionsForSession();
-        this.server.to(`bar:${sessionId}`).emit('active_questions_list', activeQuestions);
-        this.server.to(`bar:${sessionId}:tv`).emit('active_questions_list', activeQuestions);
-        this.server.emit('active_questions_list', activeQuestions);
-        if (activeQuestions.length === 0) {
-            this.server.to(`bar:${sessionId}`).emit('question_resolved');
-            this.server.to(`bar:${sessionId}:tv`).emit('question_resolved');
-            this.server.emit('question_resolved');
-        }
-        else {
-            this.server.to(`bar:${sessionId}`).emit('new_question_active', activeQuestions[0]);
-            this.server.to(`bar:${sessionId}:tv`).emit('new_question_active', activeQuestions[0]);
-            this.server.emit('new_question_active', activeQuestions[0]);
-        }
+        this.broadcastToSession(sessionId, 'question_resolved', {});
     }
 };
 exports.LiveGateway = LiveGateway;
@@ -211,6 +102,21 @@ __decorate([
     (0, websockets_1.WebSocketServer)(),
     __metadata("design:type", socket_io_1.Server)
 ], LiveGateway.prototype, "server", void 0);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('PING'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket]),
+    __metadata("design:returntype", void 0)
+], LiveGateway.prototype, "handlePing", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('JOIN_SESSION'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", Promise)
+], LiveGateway.prototype, "handleJoinSession", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('join_bar_session'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
@@ -243,7 +149,9 @@ exports.LiveGateway = LiveGateway = LiveGateway_1 = __decorate([
             credentials: true,
         },
     }),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => session_engine_1.SessionEngine))),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        redis_service_1.RedisService])
+        redis_service_1.RedisService,
+        session_engine_1.SessionEngine])
 ], LiveGateway);
 //# sourceMappingURL=live.gateway.js.map

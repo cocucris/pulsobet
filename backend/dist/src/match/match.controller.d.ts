@@ -8,88 +8,90 @@ export declare class MatchController {
     private readonly matchService;
     constructor(matchService: MatchService);
     getLeaderboard(sessionId: string): Promise<{
+        rank: number;
         id: string;
         nickname: string;
-        tableNumber: string | null;
         totalPoints: number;
         streakCount: number;
     }[]>;
     getLiveMatch(sessionId: string): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.MatchStatus;
-        apiFootballId: number;
         homeTeam: string;
         awayTeam: string;
-        startTime: Date;
-        currentMinute: number;
         scoreHome: number;
         scoreAway: number;
+        status: "SCHEDULED" | "LIVE" | "PAUSED" | "FINISHED";
+        currentMinute: number;
     } | null>;
     getActiveQuestion(sessionId: string): Promise<{
         id: string;
         questionText: string;
-        options: any[];
+        options: {
+            id: number;
+            text: string;
+            count: number;
+            percentage: number;
+        }[];
         pointsReward: number;
-        imageUrl: string | null;
         isFlash: boolean;
-        isClosed: boolean;
-        expiresAt: Date;
+        expiresAt: string;
         totalVotes: number;
+        imageUrl?: string | null;
     }[]>;
     launchManualQuestion(createManualQuestionDto: CreateManualQuestionDto): Promise<{
         status: string;
-        message: string;
         questionId: string;
+        expiresAt: Date;
+        trivia: {
+            id: any;
+            questionText: any;
+            options: any[];
+            pointsReward: any;
+            imageUrl: any;
+            isFlash: any;
+            isClosed: any;
+            expiresAt: any;
+            totalVotes: number;
+        };
     }>;
     resolveQuestion(dto: ResolveQuestionDto): Promise<{
         status: string;
-        message: string;
-        winnersCount?: undefined;
-        losersCount?: undefined;
-        leaderboard?: undefined;
-    } | {
-        status: string;
-        message: string;
         winnersCount: number;
-        losersCount: number;
-        leaderboard: {
-            id: string;
-            nickname: string;
-            tableNumber: string | null;
-            totalPoints: number;
-            streakCount: number;
-        }[];
+        pointsAwarded: number;
     }>;
     receiveSportsEvent(sportsApiWebhookDto: SportsApiWebhookDto): Promise<{
-        status: string;
-        reason: string;
-        event?: undefined;
+        id: string;
+        homeTeam: string;
+        awayTeam: string;
+        scoreHome: number;
+        scoreAway: number;
+        status: import("@prisma/client").$Enums.MatchStatus;
+        currentMinute: number;
     } | {
         status: string;
-        event: "GOAL" | "CARD" | "PERIOD_END" | "MATCH_END";
+        reason: string;
+    } | {
+        status: string;
         reason?: undefined;
     }>;
     updateScore(dto: UpdateMatchScoreDto): Promise<{
         id: string;
-        status: import("@prisma/client").$Enums.MatchStatus;
-        apiFootballId: number;
         homeTeam: string;
         awayTeam: string;
-        startTime: Date;
-        currentMinute: number;
         scoreHome: number;
         scoreAway: number;
+        status: import("@prisma/client").$Enums.MatchStatus;
+        currentMinute: number;
     }>;
     updateQuestionText(id: string, dto: UpdateQuestionTextDto): Promise<{
-        id: string;
-        matchId: string;
-        questionText: string;
-        options: import("@prisma/client/runtime/library").JsonValue;
-        correctOptionId: number | null;
-        pointsReward: number;
-        imageUrl: string | null;
-        isFlash: boolean;
-        isClosed: boolean;
-        expiresAt: Date;
+        id: any;
+        questionText: any;
+        options: any[];
+        pointsReward: any;
+        imageUrl: any;
+        isFlash: any;
+        isClosed: any;
+        expiresAt: any;
+        totalVotes: number;
     }>;
 }

@@ -1,143 +1,118 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { useSessionStore } from '@/store/useSessionStore';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
 
-export const useSocket = (sessionId?: string, isTv: boolean = false) => {
+export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: boolean = false) => {
   const socketRef = useRef<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [activeQuestion, setActiveQuestion] = useState<any>(null);
-  const [activeQuestions, setActiveQuestions] = useState<any[]>([]);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [matchData, setMatchData] = useState<any>(null);
 
   useEffect(() => {
     if (!sessionId) return;
 
-    // 1. Obtener el token correspondiente según el tipo de dispositivo
     let token: string | null = null;
     let nickname: string = 'Jugador';
-    
+    let playerId: string | undefined = undefined;
+
     if (typeof window !== 'undefined') {
-      token = isTv 
+      token = isTv
         ? localStorage.getItem(`pulsobet_tv_token:${sessionId}`)
-        : localStorage.getItem(`pulsobet_player_token:${sessionId}`);
-        
-      if (!isTv) {
+        : (isAdmin ? localStorage.getItem(`pulsobet_staff_token:${sessionId}`) : localStorage.getItem(`pulsobet_player_token:${sessionId}`));
+
+      if (!isTv && !isAdmin) {
         nickname = localStorage.getItem(`pulsobet_nickname:${sessionId}`) || 'Jugador';
+        playerId = localStorage.getItem(`pulsobet_player_id:${sessionId}`) || undefined;
       }
     }
 
-    // Si no es TV y no hay token de jugador, evitamos la conexión hasta que complete el onboarding
-    if (!isTv && !token) return;
+    if (!isTv && !isAdmin && !token) return;
 
-    // 2. Inicializar la conexión inyectando el JWT en el objeto 'auth' para el handshake seguro
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket'],
       reconnectionAttempts: 20,
       reconnectionDelay: 1000,
       auth: {
-        token: token // El WsJwtGuard del backend interceptará y validará este campo
-      }
+        token: token,
+      },
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      setIsConnected(true);
-      // Nos unimos a la sala adecuada del bar por WebSockets
+      useSessionStore.getState().setConnected(true);
+
+      const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
+      socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+
       if (isTv) {
         socket.emit('join_tv_screen', { sessionId });
-      } else {
+      } else if (!isAdmin) {
         socket.emit('join_bar_session', { sessionId, nickname });
       }
     });
 
+    socket.on('reconnect', () => {
+      const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
+      socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+    });
+
     socket.on('disconnect', () => {
-      setIsConnected(false);
+      useSessionStore.getState().setConnected(false);
     });
 
-    // Si el backend rechaza el JWT (WsJwtGuard), limpiamos el token inválido del localStorage
-    // y recargamos la página para que el jugador se registre de nuevo con un token fresco.
-    socket.on('connect_error', (err) => {
-      console.warn('[useSocket] connect_error:', err.message);
-      if (!isTv && err.message && err.message.toLowerCase().includes('autorizado')) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(`pulsobet_player_token:${sessionId}`);
-          localStorage.removeItem(`pulsobet_player_id:${sessionId}`);
-          window.location.reload();
-        }
+    // PING / PONG Heartbeat cada 20 segundos
+    const heartbeatInterval = setInterval(() => {
+      if (socket.connected) {
+        socket.emit('PING');
+      }
+    }, 20000);
+
+    // Escuchar SNAPSHOT de hidratación completa
+    socket.on('SNAPSHOT', (snapshot: any) => {
+      if (snapshot) {
+        useSessionStore.getState().applySnapshot(snapshot);
       }
     });
 
-    socket.on('exception', (error: any) => {
-      console.warn('[useSocket] WS exception:', error);
-    });
+    // Escuchar eventos de dominio
+    const domainEvents = [
+      'MATCH_STARTED',
+      'MATCH_SCORE_UPDATED',
+      'MATCH_FINISHED',
+      'TRIVIA_CREATED',
+      'TRIVIA_OPENED',
+      'TRIVIA_CLOSED',
+      'TRIVIA_RESULT',
+      'LEADERBOARD_UPDATED',
+      'PLAYER_JOINED',
+      'PLAYER_VOTED',
+      // compatibilidad
+      'leaderboard_update',
+      'match_score_update',
+      'new_question_active',
+      'question_resolved',
+      'player_joined',
+    ];
 
-    // El backend emite 'unauthorized' cuando WsJwtGuard rechaza el token
-    // Limpiamos el token inválido del localStorage y recargamos para re-registrarse
-    socket.on('unauthorized', () => {
-      console.warn('[useSocket] Token rechazado por el servidor. Limpiando y re-registrando...');
-      if (!isTv && typeof window !== 'undefined') {
-        localStorage.removeItem(`pulsobet_player_token:${sessionId}`);
-        localStorage.removeItem(`pulsobet_player_id:${sessionId}`);
-        window.location.reload();
-      }
-    });
-
-    socket.on('new_question_active', (question: any) => {
-      setActiveQuestion(question);
-      if (question) {
-        setActiveQuestions((prev) => {
-          const exists = prev.some((q) => q.id === question.id);
-          return exists ? prev : [question, ...prev];
-        });
-      }
-    });
-
-    socket.on('active_questions_list', (questions: any[]) => {
-      if (Array.isArray(questions)) {
-        setActiveQuestions(questions);
-        if (questions.length === 0) {
-          setActiveQuestion(null);
-        } else {
-          setActiveQuestion(questions[0]);
-        }
-      }
-    });
-
-    socket.on('question_resolved', () => {
-      setActiveQuestion(null);
-      setActiveQuestions([]);
-    });
-
-    socket.on('leaderboard_update', (data: any[]) => {
-      setLeaderboard(data);
-    });
-
-    socket.on('match_score_update', (data: any) => {
-      setMatchData(data);
+    domainEvents.forEach((evt) => {
+      socket.on(evt, (payload: any) => {
+        useSessionStore.getState().applyEvent(evt, payload);
+      });
     });
 
     return () => {
+      clearInterval(heartbeatInterval);
       socket.disconnect();
     };
-  }, [sessionId, isTv]);
+  }, [sessionId, isTv, isAdmin]);
 
   const sendPrediction = useCallback((questionId: string, chosenOptionId: number) => {
-    if (socketRef.current && isConnected) {
+    if (socketRef.current && socketRef.current.connected) {
       socketRef.current.emit('submit_prediction', { questionId, chosenOptionId });
     }
-  }, [isConnected]);
+  }, []);
 
   return {
-    isConnected,
-    activeQuestion,
-    activeQuestions,
-    leaderboard,
-    matchData,
     sendPrediction,
-    setActiveQuestion,
-    setActiveQuestions,
   };
 };
