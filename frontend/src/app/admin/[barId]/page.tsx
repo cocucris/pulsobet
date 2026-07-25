@@ -1,23 +1,25 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import { useSessionStore } from '@/store/useSessionStore';
 import { ScoreBoardControl } from './components/ScoreBoardControl';
 import { TriviaControl } from './components/TriviaControl';
 import { RewardValidator } from './components/RewardValidator';
+import { AnalyticsWidget } from './components/AnalyticsWidget';
 import { API_URL } from '@/config/api';
 
 export default function AdminBarPage() {
   const params = useParams();
   const barId = params.barId as string;
 
+  const [refreshAnalyticsKey, setRefreshAnalyticsKey] = useState(0);
+
   // Conectar el admin a WebSockets (isAdmin = true)
   useSocket(barId, false, true);
 
   const isConnected = useSessionStore((s) => s.isConnected);
-  const snapshot = useSessionStore((s) => s.snapshot);
 
   useEffect(() => {
     // Hidratar snapshot inicial si no ha llegado por socket
@@ -50,12 +52,16 @@ export default function AdminBarPage() {
       </header>
 
       <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
-        <RewardValidator barId={barId} />
+        <RewardValidator barId={barId} onRedeemedSuccess={() => setRefreshAnalyticsKey((k) => k + 1)} />
         <TriviaControl barId={barId} />
       </div>
 
       <div className="max-w-5xl mx-auto mt-8">
-        <ScoreBoardControl />
+        <ScoreBoardControl sessionId={barId} />
+      </div>
+
+      <div className="max-w-5xl mx-auto mt-8">
+        <AnalyticsWidget barId={barId} refreshKey={refreshAnalyticsKey} />
       </div>
     </main>
   );

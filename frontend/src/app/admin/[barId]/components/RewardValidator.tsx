@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import { API_URL } from '@/config/api';
 
-export function RewardValidator({ barId }: { barId: string }) {
+export function RewardValidator({
+  barId,
+  onRedeemedSuccess,
+}: {
+  barId: string;
+  onRedeemedSuccess?: () => void;
+}) {
   const [claimCode, setClaimCode] = useState('');
   const [redeemStatus, setRedeemStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isProcessingCode, setIsProcessingCode] = useState(false);
@@ -39,6 +45,7 @@ export function RewardValidator({ barId }: { barId: string }) {
           message: `¡ENTREGAR A ${playerNickname.toUpperCase()}: ${rewardTitle.toUpperCase()}! 🍻 (Código ${data.claimCode} validado con éxito)`,
         });
         setClaimCode('');
+        onRedeemedSuccess?.();
       }
     } catch (error) {
       setRedeemStatus({ success: false, message: 'Error de conexión con el servidor.' });
