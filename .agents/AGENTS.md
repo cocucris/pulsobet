@@ -8,3 +8,9 @@
 ## 2. Directivas de Aislamiento de Código
 - Tu objetivo es implementar ÚNICAMENTE la tarea, funcionalidad o cambio pedido explícitamente.
 - No alterar, refactorizar o reescribir otras partes del código que no formen parte directa de la instrucción.
+
+## 3. Reglas Irrompibles de Blindaje y Tolerancia a Fallos
+- **Uso Obligatorio de `forwardRef()`:** Cualquier importación de módulos con acoplamiento bidireccional (ej. `SessionModule` <-> `LiveModule`) DEBE utilizar `forwardRef(() => Module)` en AMBOS lados. Está estrictamente prohibido importar módulos circulares sin `forwardRef()`.
+- **Inmunidad en Capa de Caché (Redis):** Todas las operaciones en `RedisSessionCacheService` deben estar protegidas por bloques `try...catch`. Si Redis no está disponible o falla un comando, el servidor DEBE degradar suavemente hacia PostgreSQL sin lanzar excepciones no controladas.
+- **Auto-Aseguramiento de Sesión (`ensureSession`):** Los métodos de negocio en `SessionEngine` deben invocar `ensureSession()` para garantizar que siempre exista un local (`Bar`) y una sesión activa (`GameSession`), evitando respuestas 404/400 cuando se consulte por primera vez.
+- **Redundancia de Transporte en Clientes (`useSocket.ts`):** `useSocket` debe incluir reconexión automática infinita con backoff exponencial y un polling REST de respaldo cada 5s cuando `isConnected` sea falso, garantizando que el usuario nunca pierda la hidratación de pantalla.

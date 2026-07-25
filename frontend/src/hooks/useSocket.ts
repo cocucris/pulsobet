@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useSessionStore } from '@/store/useSessionStore';
-
-const SOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+import { API_URL, WS_URL } from '@/config/api';
 
 export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: boolean = false) => {
   const socketRef = useRef<Socket | null>(null);
@@ -26,10 +25,13 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     }
 
     // Conectar socket (con o sin token para recibir eventos en tiempo real)
-    const socket = io(SOCKET_URL, {
+    const socket = io(WS_URL, {
       transports: ['polling', 'websocket'],
-      reconnectionAttempts: 20,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
       auth: {
         token: token,
       },
@@ -51,20 +53,40 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     });
 
     socket.on('reconnect', () => {
+      useSessionStore.getState().setConnected(true);
       const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
       socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+    });
+
+    socket.on('connect_error', () => {
+      // Si falla WS, no se bloquea la interfaz; el fallback REST mantendrá el snapshot al día
     });
 
     socket.on('disconnect', () => {
       useSessionStore.getState().setConnected(false);
     });
 
-    // PING / PONG Heartbeat cada 20 segundos
+    // PING / PONG Heartbeat cada 15 segundos
     const heartbeatInterval = setInterval(() => {
       if (socket.connected) {
         socket.emit('PING');
       }
-    }, 20000);
+    }, 15000);
+
+    // Fallback de respaldo HTTP REST polling cada 5s si el socket está desconectado
+    const restFallbackInterval = setInterval(() => {
+      const isConnected = useSessionStore.getState().isConnected;
+      if (!isConnected && sessionId) {
+        fetch(`${API_URL}/session/snapshot/${sessionId}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((snapshot) => {
+            if (snapshot) {
+              useSessionStore.getState().applySnapshot(snapshot);
+            }
+          })
+          .catch(() => {});
+      }
+    }, 5000);
 
     // Escuchar SNAPSHOT de hidratación completa
     socket.on('SNAPSHOT', (snapshot: any) => {
@@ -101,6 +123,7 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
 
     return () => {
       clearInterval(heartbeatInterval);
+      clearInterval(restFallbackInterval);
       socket.disconnect();
     };
   }, [sessionId, isTv, isAdmin]);

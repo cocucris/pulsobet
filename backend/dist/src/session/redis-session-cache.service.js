@@ -20,84 +20,160 @@ let RedisSessionCacheService = RedisSessionCacheService_1 = class RedisSessionCa
         this.redisService = redisService;
     }
     get client() {
-        return this.redisService.redisClient;
+        try {
+            return this.redisService.redisClient;
+        }
+        catch {
+            return null;
+        }
     }
     async incrementVersion(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return 1;
+            return await this.client.incr(`session:${sessionId}:version`);
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on incrementVersion: ${e.message}`);
             return 1;
-        return await this.client.incr(`session:${sessionId}:version`);
+        }
     }
     async getVersion(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return 1;
+            const v = await this.client.get(`session:${sessionId}:version`);
+            return v ? parseInt(v, 10) : 1;
+        }
+        catch (e) {
             return 1;
-        const v = await this.client.get(`session:${sessionId}:version`);
-        return v ? parseInt(v, 10) : 1;
+        }
     }
     async incrementEventNumber(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return 1;
+            return await this.client.incr(`session:${sessionId}:event_number`);
+        }
+        catch (e) {
             return 1;
-        return await this.client.incr(`session:${sessionId}:event_number`);
+        }
     }
     async getEventNumber(sessionId) {
-        if (!this.client)
-            return 1;
-        const n = await this.client.get(`session:${sessionId}:event_number`);
-        return n ? parseInt(n, 10) : 0;
+        try {
+            if (!this.client)
+                return 0;
+            const n = await this.client.get(`session:${sessionId}:event_number`);
+            return n ? parseInt(n, 10) : 0;
+        }
+        catch (e) {
+            return 0;
+        }
     }
     async incrementConnected(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return 1;
+            return await this.client.incr(`session:${sessionId}:connected`);
+        }
+        catch (e) {
             return 1;
-        return await this.client.incr(`session:${sessionId}:connected`);
+        }
     }
     async decrementConnected(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return 0;
+            const count = await this.client.decr(`session:${sessionId}:connected`);
+            return Math.max(0, count);
+        }
+        catch (e) {
             return 0;
-        const count = await this.client.decr(`session:${sessionId}:connected`);
-        return Math.max(0, count);
+        }
     }
     async getConnectedCount(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return 0;
+            const count = await this.client.get(`session:${sessionId}:connected`);
+            return count ? Math.max(0, parseInt(count, 10)) : 0;
+        }
+        catch (e) {
             return 0;
-        const count = await this.client.get(`session:${sessionId}:connected`);
-        return count ? Math.max(0, parseInt(count, 10)) : 0;
+        }
     }
     async setMatch(sessionId, matchData) {
-        if (!this.client)
-            return;
-        await this.client.set(`session:${sessionId}:match`, JSON.stringify(matchData));
+        try {
+            if (!this.client)
+                return;
+            await this.client.set(`session:${sessionId}:match`, JSON.stringify(matchData));
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on setMatch: ${e.message}`);
+        }
     }
     async getMatch(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return null;
+            const data = await this.client.get(`session:${sessionId}:match`);
+            return data ? JSON.parse(data) : null;
+        }
+        catch (e) {
             return null;
-        const data = await this.client.get(`session:${sessionId}:match`);
-        return data ? JSON.parse(data) : null;
+        }
     }
     async setCurrentTrivia(sessionId, triviaData) {
-        if (!this.client)
-            return;
-        await this.client.set(`session:${sessionId}:trivia`, JSON.stringify(triviaData));
+        try {
+            if (!this.client)
+                return;
+            await this.client.set(`session:${sessionId}:trivia`, JSON.stringify(triviaData));
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on setCurrentTrivia: ${e.message}`);
+        }
     }
     async getCurrentTrivia(sessionId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return null;
+            const data = await this.client.get(`session:${sessionId}:trivia`);
+            return data ? JSON.parse(data) : null;
+        }
+        catch (e) {
             return null;
-        const data = await this.client.get(`session:${sessionId}:trivia`);
-        return data ? JSON.parse(data) : null;
+        }
     }
     async clearCurrentTrivia(sessionId) {
-        if (!this.client)
-            return;
-        await this.client.del(`session:${sessionId}:trivia`);
+        try {
+            if (!this.client)
+                return;
+            await this.client.del(`session:${sessionId}:trivia`);
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on clearCurrentTrivia: ${e.message}`);
+        }
     }
     async setRewards(barId, rewards) {
-        if (!this.client)
-            return;
-        await this.client.set(`bar:${barId}:rewards`, JSON.stringify(rewards));
+        try {
+            if (!this.client)
+                return;
+            await this.client.set(`bar:${barId}:rewards`, JSON.stringify(rewards));
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on setRewards: ${e.message}`);
+        }
     }
     async getRewards(barId) {
-        if (!this.client)
+        try {
+            if (!this.client)
+                return null;
+            const data = await this.client.get(`bar:${barId}:rewards`);
+            return data ? JSON.parse(data) : null;
+        }
+        catch (e) {
             return null;
-        const data = await this.client.get(`bar:${barId}:rewards`);
-        return data ? JSON.parse(data) : null;
+        }
     }
 };
 exports.RedisSessionCacheService = RedisSessionCacheService;

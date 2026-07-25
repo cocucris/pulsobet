@@ -24,96 +24,131 @@ export class SocketDispatcher {
 
   @OnEvent('match.score.updated')
   handleMatchScoreUpdated(event: MatchScoreUpdatedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast MATCH_SCORE_UPDATED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_SCORE_UPDATED', {
-      scoreHome: event.scoreHome,
-      scoreAway: event.scoreAway,
-      homeTeam: event.homeTeam,
-      awayTeam: event.awayTeam,
-      eventNumber: event.eventNumber,
-    });
+    try {
+      this.logger.log(`[Dispatcher] Broadcast MATCH_SCORE_UPDATED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_SCORE_UPDATED', {
+        scoreHome: event.scoreHome,
+        scoreAway: event.scoreAway,
+        homeTeam: event.homeTeam,
+        awayTeam: event.awayTeam,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleMatchScoreUpdated: ${e.message}`);
+    }
   }
 
   @OnEvent('match.started')
   handleMatchStarted(event: MatchStartedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast MATCH_STARTED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_STARTED', {
-      match: event.match,
-      eventNumber: event.eventNumber,
-    });
+    try {
+      this.logger.log(`[Dispatcher] Broadcast MATCH_STARTED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_STARTED', {
+        match: event.match,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleMatchStarted: ${e.message}`);
+    }
   }
 
   @OnEvent('match.finished')
   handleMatchFinished(event: MatchFinishedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast MATCH_FINISHED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_FINISHED', {
-      match: event.match,
-      eventNumber: event.eventNumber,
-    });
+    try {
+      this.logger.log(`[Dispatcher] Broadcast MATCH_FINISHED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_FINISHED', {
+        match: event.match,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleMatchFinished: ${e.message}`);
+    }
   }
 
   @OnEvent('trivia.opened')
   handleTriviaOpened(event: TriviaOpenedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast TRIVIA_OPENED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_OPENED', {
-      trivia: event.trivia,
-      eventNumber: event.eventNumber,
-    });
-    // Emitir también compatibilidad hacia atrás
-    this.liveGateway.broadcastToSession(event.sessionId, 'new_question_active', event.trivia);
+    try {
+      this.logger.log(`[Dispatcher] Broadcast TRIVIA_OPENED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_OPENED', {
+        trivia: event.trivia,
+        eventNumber: event.eventNumber,
+      });
+      this.liveGateway.broadcastToSession(event.sessionId, 'new_question_active', event.trivia);
+    } catch (e) {
+      this.logger.error(`Error en handleTriviaOpened: ${e.message}`);
+    }
   }
 
   @OnEvent('trivia.closed')
   handleTriviaClosed(event: TriviaClosedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast TRIVIA_CLOSED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_CLOSED', {
-      triviaId: event.triviaId,
-      eventNumber: event.eventNumber,
-    });
-    this.liveGateway.broadcastToSession(event.sessionId, 'question_resolved', {});
+    try {
+      this.logger.log(`[Dispatcher] Broadcast TRIVIA_CLOSED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_CLOSED', {
+        triviaId: event.triviaId,
+        eventNumber: event.eventNumber,
+      });
+      this.liveGateway.broadcastToSession(event.sessionId, 'question_resolved', {});
+    } catch (e) {
+      this.logger.error(`Error en handleTriviaClosed: ${e.message}`);
+    }
   }
 
   @OnEvent('trivia.result')
   handleTriviaResult(event: TriviaResultEvent) {
-    this.logger.log(`[Dispatcher] Broadcast TRIVIA_RESULT a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_RESULT', {
-      triviaId: event.triviaId,
-      correctOptionId: event.correctOptionId,
-      winnersCount: event.winnersCount,
-      leaderboard: event.leaderboard,
-      eventNumber: event.eventNumber,
-    });
-    this.liveGateway.broadcastToSession(event.sessionId, 'leaderboard_update', event.leaderboard);
+    try {
+      this.logger.log(`[Dispatcher] Broadcast TRIVIA_RESULT a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_RESULT', {
+        triviaId: event.triviaId,
+        correctOptionId: event.correctOptionId,
+        winnersCount: event.winnersCount,
+        leaderboard: event.leaderboard,
+        eventNumber: event.eventNumber,
+      });
+      this.liveGateway.broadcastToSession(event.sessionId, 'leaderboard_update', event.leaderboard);
+    } catch (e) {
+      this.logger.error(`Error en handleTriviaResult: ${e.message}`);
+    }
   }
 
   @OnEvent('player.joined')
   handlePlayerJoined(event: PlayerJoinedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast PLAYER_JOINED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'PLAYER_JOINED', {
-      player: event.player,
-      eventNumber: event.eventNumber,
-    });
-    this.liveGateway.broadcastToSession(event.sessionId, 'player_joined', { nickname: event.player.nickname });
+    try {
+      this.logger.log(`[Dispatcher] Broadcast PLAYER_JOINED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'PLAYER_JOINED', {
+        player: event.player,
+        eventNumber: event.eventNumber,
+      });
+      this.liveGateway.broadcastToSession(event.sessionId, 'player_joined', { nickname: event.player.nickname });
+    } catch (e) {
+      this.logger.error(`Error en handlePlayerJoined: ${e.message}`);
+    }
   }
 
   @OnEvent('player.voted')
   handlePlayerVoted(event: PlayerVotedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast PLAYER_VOTED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'PLAYER_VOTED', {
-      triviaId: event.triviaId,
-      options: event.options,
-      totalVotes: event.totalVotes,
-      eventNumber: event.eventNumber,
-    });
+    try {
+      this.logger.log(`[Dispatcher] Broadcast PLAYER_VOTED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'PLAYER_VOTED', {
+        triviaId: event.triviaId,
+        options: event.options,
+        totalVotes: event.totalVotes,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handlePlayerVoted: ${e.message}`);
+    }
   }
 
   @OnEvent('leaderboard.updated')
   handleLeaderboardUpdated(event: LeaderboardUpdatedEvent) {
-    this.logger.log(`[Dispatcher] Broadcast LEADERBOARD_UPDATED a sesión ${event.sessionId}`);
-    this.liveGateway.broadcastToSession(event.sessionId, 'LEADERBOARD_UPDATED', {
-      leaderboard: event.leaderboard,
-      eventNumber: event.eventNumber,
-    });
-    this.liveGateway.broadcastToSession(event.sessionId, 'leaderboard_update', event.leaderboard);
+    try {
+      this.logger.log(`[Dispatcher] Broadcast LEADERBOARD_UPDATED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'LEADERBOARD_UPDATED', {
+        leaderboard: event.leaderboard,
+        eventNumber: event.eventNumber,
+      });
+      this.liveGateway.broadcastToSession(event.sessionId, 'leaderboard_update', event.leaderboard);
+    } catch (e) {
+      this.logger.error(`Error en handleLeaderboardUpdated: ${e.message}`);
+    }
   }
 }
