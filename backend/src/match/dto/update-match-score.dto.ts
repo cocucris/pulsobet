@@ -10,6 +10,14 @@ export class UpdateMatchScoreDto {
   @IsNumber()
   scoreAway: number;
 
+  @IsString()
+  @IsOptional()
+  homeTeam?: string;
+
+  @IsString()
+  @IsOptional()
+  awayTeam?: string;
+
   @IsNumber()
   @IsOptional()
   currentMinute?: number;

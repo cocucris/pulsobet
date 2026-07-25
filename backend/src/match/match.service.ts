@@ -403,6 +403,8 @@ export class MatchService {
       data: {
         scoreHome: dto.scoreHome,
         scoreAway: dto.scoreAway,
+        ...(dto.homeTeam && { homeTeam: dto.homeTeam }),
+        ...(dto.awayTeam && { awayTeam: dto.awayTeam }),
         ...(dto.currentMinute !== undefined && { currentMinute: dto.currentMinute }),
         ...(dto.status && { status: dto.status as any }),
       },

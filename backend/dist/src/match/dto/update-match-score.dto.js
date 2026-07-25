@@ -15,6 +15,8 @@ class UpdateMatchScoreDto {
     matchId;
     scoreHome;
     scoreAway;
+    homeTeam;
+    awayTeam;
     currentMinute;
     status;
 }
@@ -31,6 +33,16 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], UpdateMatchScoreDto.prototype, "scoreAway", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateMatchScoreDto.prototype, "homeTeam", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], UpdateMatchScoreDto.prototype, "awayTeam", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.IsOptional)(),

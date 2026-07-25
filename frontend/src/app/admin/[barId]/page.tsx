@@ -154,7 +154,7 @@ export default function AdminBarPage() {
       .catch(() => {});
   }, []);
 
-  const handleScoreUpdate = async (side: 'home' | 'away', delta: number) => {
+  const handleScoreUpdate = async (side: 'home' | 'away' | 'none', delta: number) => {
     if (!liveMatch) return;
     const newHome = side === 'home' ? Math.max(0, liveMatch.scoreHome + delta) : liveMatch.scoreHome;
     const newAway = side === 'away' ? Math.max(0, liveMatch.scoreAway + delta) : liveMatch.scoreAway;
@@ -163,7 +163,14 @@ export default function AdminBarPage() {
       const res = await fetch(`${API_URL}/match/score`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId: liveMatch.id, scoreHome: newHome, scoreAway: newAway, currentMinute: liveMatch.currentMinute }),
+        body: JSON.stringify({
+          matchId: liveMatch.id,
+          scoreHome: newHome,
+          scoreAway: newAway,
+          homeTeam: liveMatch.homeTeam,
+          awayTeam: liveMatch.awayTeam,
+          currentMinute: liveMatch.currentMinute,
+        }),
       });
       if (res.ok) {
         const updated = await res.json();
@@ -555,7 +562,14 @@ export default function AdminBarPage() {
             <div className="grid md:grid-cols-3 gap-6 items-center">
               {/* Equipo Local */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-sm font-black uppercase tracking-wider text-white">{liveMatch.homeTeam}</span>
+                <input
+                  type="text"
+                  value={liveMatch.homeTeam}
+                  onChange={(e) => setLiveMatch((prev: any) => ({ ...prev, homeTeam: e.target.value }))}
+                  onBlur={() => handleScoreUpdate('none', 0)}
+                  placeholder="Equipo local"
+                  className="text-center text-sm font-black uppercase tracking-wider text-white bg-transparent border-b border-slate-600 focus:border-amber-500 focus:outline-none w-full pb-1"
+                />
                 <span className="text-6xl font-black font-mono text-amber-400">{liveMatch.scoreHome}</span>
                 <div className="flex gap-2">
                   <button
@@ -581,7 +595,14 @@ export default function AdminBarPage() {
 
               {/* Equipo Visitante */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-sm font-black uppercase tracking-wider text-white">{liveMatch.awayTeam}</span>
+                <input
+                  type="text"
+                  value={liveMatch.awayTeam}
+                  onChange={(e) => setLiveMatch((prev: any) => ({ ...prev, awayTeam: e.target.value }))}
+                  onBlur={() => handleScoreUpdate('none', 0)}
+                  placeholder="Equipo visitante"
+                  className="text-center text-sm font-black uppercase tracking-wider text-white bg-transparent border-b border-slate-600 focus:border-amber-500 focus:outline-none w-full pb-1"
+                />
                 <span className="text-6xl font-black font-mono text-amber-400">{liveMatch.scoreAway}</span>
                 <div className="flex gap-2">
                   <button
