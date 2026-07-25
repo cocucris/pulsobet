@@ -3,6 +3,7 @@ import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
 import { ResolveQuestionDto } from './dto/resolve-question.dto';
 import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
+import { UpdateQuestionTextDto } from './dto/update-question-text.dto';
 export declare class MatchController {
     private readonly matchService;
     constructor(matchService: MatchService);
@@ -78,5 +79,17 @@ export declare class MatchController {
         currentMinute: number;
         scoreHome: number;
         scoreAway: number;
+    }>;
+    updateQuestionText(id: string, dto: UpdateQuestionTextDto): Promise<{
+        id: string;
+        matchId: string;
+        questionText: string;
+        options: import("@prisma/client/runtime/library").JsonValue;
+        correctOptionId: number | null;
+        pointsReward: number;
+        imageUrl: string | null;
+        isFlash: boolean;
+        isClosed: boolean;
+        expiresAt: Date;
     }>;
 }

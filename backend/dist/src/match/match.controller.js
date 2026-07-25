@@ -19,6 +19,7 @@ const create_manual_question_dto_1 = require("./dto/create-manual-question.dto")
 const sports_api_webhook_dto_1 = require("./dto/sports-api-webhook.dto");
 const resolve_question_dto_1 = require("./dto/resolve-question.dto");
 const update_match_score_dto_1 = require("./dto/update-match-score.dto");
+const update_question_text_dto_1 = require("./dto/update-question-text.dto");
 let MatchController = class MatchController {
     matchService;
     constructor(matchService) {
@@ -44,6 +45,9 @@ let MatchController = class MatchController {
     }
     async updateScore(dto) {
         return this.matchService.updateMatchScore(dto);
+    }
+    async updateQuestionText(id, dto) {
+        return this.matchService.updateLiveQuestion(id, dto);
     }
 };
 exports.MatchController = MatchController;
@@ -104,6 +108,16 @@ __decorate([
     __metadata("design:paramtypes", [update_match_score_dto_1.UpdateMatchScoreDto]),
     __metadata("design:returntype", Promise)
 ], MatchController.prototype, "updateScore", null);
+__decorate([
+    (0, common_1.Patch)('questions/:id'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({ whitelist: true })),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_question_text_dto_1.UpdateQuestionTextDto]),
+    __metadata("design:returntype", Promise)
+], MatchController.prototype, "updateQuestionText", null);
 exports.MatchController = MatchController = __decorate([
     (0, common_1.Controller)('match'),
     __metadata("design:paramtypes", [match_service_1.MatchService])

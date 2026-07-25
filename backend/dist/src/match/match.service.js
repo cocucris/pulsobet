@@ -333,6 +333,35 @@ let MatchService = class MatchService {
         }
         return match;
     }
+    async updateLiveQuestion(questionId, dto) {
+        const existing = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
+        if (!existing)
+            throw new common_1.BadRequestException('Pregunta no encontrada');
+        let updatedOptions = existing.options;
+        if (dto.options && dto.options.length > 0) {
+            updatedOptions = updatedOptions.map((opt) => {
+                const patch = dto.options.find((o) => o.id === opt.id);
+                return patch ? { ...opt, text: patch.text } : opt;
+            });
+        }
+        const updated = await this.prisma.liveQuestion.update({
+            where: { id: questionId },
+            data: {
+                ...(dto.questionText && { questionText: dto.questionText }),
+                options: updatedOptions,
+            },
+        });
+        const activeQuestions = await this.getActiveQuestions();
+        const activeSessions = await this.prisma.gameSession.findMany({ where: { isActive: true } });
+        for (const session of activeSessions) {
+            this.server_broadcast_active(session.id, activeQuestions);
+        }
+        return updated;
+    }
+    server_broadcast_active(sessionId, questions) {
+        this.liveGateway['server']?.to(`bar:${sessionId}`).emit('active_questions_list', questions);
+        this.liveGateway['server']?.to(`bar:${sessionId}:tv`).emit('active_questions_list', questions);
+    }
 };
 exports.MatchService = MatchService;
 exports.MatchService = MatchService = __decorate([

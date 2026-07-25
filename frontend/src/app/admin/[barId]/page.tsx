@@ -195,6 +195,44 @@ export default function AdminBarPage() {
     } catch (e) {}
   };
 
+  // Estado para edición inline de trivias activas
+  const [editingTriviaId, setEditingTriviaId] = useState<string | null>(null);
+  const [draftQuestion, setDraftQuestion] = useState<{ text: string; options: { id: number; text: string }[] } | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleStartEdit = (trivia: { id: string; text: string; options: { id: number; text: string }[] }) => {
+    setEditingTriviaId(trivia.id);
+    setDraftQuestion({ text: trivia.text, options: trivia.options.map((o) => ({ ...o })) });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTriviaId || !draftQuestion) return;
+    try {
+      setIsSavingEdit(true);
+      const res = await fetch(`${API_URL}/match/questions/${editingTriviaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionText: draftQuestion.text, options: draftQuestion.options }),
+      });
+      if (res.ok) {
+        // Actualizar la lista local inmediatamente
+        setActiveTrivias((prev) =>
+          prev.map((t) =>
+            t.id === editingTriviaId
+              ? { ...t, text: draftQuestion.text, options: draftQuestion.options }
+              : t
+          )
+        );
+        setEditingTriviaId(null);
+        setDraftQuestion(null);
+      }
+    } catch (e) {
+      console.error('Error guardando edición:', e);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   // Manejador para validar el código de 4 dígitos entregado por el mozo/cliente
   const handleRedeemCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -523,29 +561,85 @@ export default function AdminBarPage() {
               <span className="text-xs font-black uppercase text-amber-400 tracking-wider block">
                 🎯 Trivias Activas en Votación ({activeTrivias.length})
               </span>
-              {activeTrivias.map((trivia, index) => (
-                <div key={trivia.id || index} className="bg-slate-900 p-4 rounded-xl border border-slate-700">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-amber-400">Trivia #{activeTrivias.length - index} (+{trivia.pointsReward || 150} PTS)</span>
+              {activeTrivias.map((trivia, index) => {
+                const isEditing = editingTriviaId === trivia.id;
+                return (
+                  <div key={trivia.id || index} className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+                    {isEditing && draftQuestion ? (
+                      /* MODO EDICIÓN */
+                      <div className="flex flex-col gap-3">
+                        <span className="text-xs font-black text-amber-400 uppercase tracking-wider">✏️ Editando Trivia</span>
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block mb-1">Pregunta</label>
+                          <input
+                            type="text"
+                            value={draftQuestion.text}
+                            onChange={(e) => setDraftQuestion({ ...draftQuestion, text: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-800 border border-amber-500/40 rounded-lg text-sm font-bold text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                        {draftQuestion.options.map((opt, oi) => (
+                          <div key={opt.id}>
+                            <label className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block mb-1">Opción {oi + 1}</label>
+                            <input
+                              type="text"
+                              value={opt.text}
+                              onChange={(e) => {
+                                const updated = draftQuestion.options.map((o) => o.id === opt.id ? { ...o, text: e.target.value } : o);
+                                setDraftQuestion({ ...draftQuestion, options: updated });
+                              }}
+                              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm font-bold text-white focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
+                        ))}
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={handleSaveEdit}
+                            disabled={isSavingEdit}
+                            className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg uppercase tracking-wider transition-all disabled:opacity-50"
+                          >
+                            {isSavingEdit ? 'Guardando...' : '✓ Guardar y Transmitir'}
+                          </button>
+                          <button
+                            onClick={() => { setEditingTriviaId(null); setDraftQuestion(null); }}
+                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold text-xs rounded-lg uppercase tracking-wider transition-all"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* MODO NORMAL */
+                      <>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-amber-400">Trivia #{activeTrivias.length - index} (+{trivia.pointsReward || 150} PTS)</span>
+                          <button
+                            onClick={() => handleStartEdit(trivia)}
+                            className="text-slate-400 hover:text-amber-400 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-800 transition-all"
+                            title="Editar pregunta y opciones"
+                          >
+                            ✏️ Editar
+                          </button>
+                        </div>
+                        <p className="text-sm font-bold text-white mb-3">{trivia.text}</p>
+                        <span className="text-xs text-slate-400 font-semibold block mb-2">Declarar Respuesta Correcta:</span>
+                        <div className="grid grid-cols-2 gap-3">
+                          {trivia.options.map((opt) => (
+                            <button
+                              key={opt.id}
+                              disabled={isResolving}
+                              onClick={() => handleResolveTrivia(trivia.id, opt.id)}
+                              className="py-2.5 px-3 bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-amber-500/30 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                            >
+                              🏆 Gana: {opt.text}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <p className="text-sm font-bold text-white mb-3">
-                    {trivia.text}
-                  </p>
-                  <span className="text-xs text-slate-400 font-semibold block mb-2">Declarar Respuesta Correcta:</span>
-                  <div className="grid grid-cols-2 gap-3">
-                    {trivia.options.map((opt) => (
-                      <button
-                        key={opt.id}
-                        disabled={isResolving}
-                        onClick={() => handleResolveTrivia(trivia.id, opt.id)}
-                        className="py-2.5 px-3 bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-amber-500/30 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                      >
-                        🏆 Gana: {opt.text}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

@@ -4,6 +4,7 @@ import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
 import { ResolveQuestionDto } from './dto/resolve-question.dto';
 import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
+import { UpdateQuestionTextDto } from './dto/update-question-text.dto';
 
 @Controller('match')
 export class MatchController {
@@ -78,5 +79,19 @@ export class MatchController {
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async updateScore(@Body() dto: UpdateMatchScoreDto) {
     return this.matchService.updateMatchScore(dto);
+  }
+
+  /**
+   * PATCH /match/questions/:id
+   * Edita el texto de una trivia activa y sus opciones, y hace broadcast a todos los clientes
+   */
+  @Patch('questions/:id')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async updateQuestionText(
+    @Param('id') id: string,
+    @Body() dto: UpdateQuestionTextDto,
+  ) {
+    return this.matchService.updateLiveQuestion(id, dto);
   }
 }

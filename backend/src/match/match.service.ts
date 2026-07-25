@@ -5,6 +5,7 @@ import { RedisService } from '../redis/redis.service';
 import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
 import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
+import { UpdateQuestionTextDto } from './dto/update-question-text.dto';
 
 @Injectable()
 export class MatchService {
@@ -425,5 +426,45 @@ export class MatchService {
     }
 
     return match;
+  }
+
+  /**
+   * Edita el texto de una pregunta activa y sus opciones, luego hace broadcast
+   */
+  async updateLiveQuestion(questionId: string, dto: UpdateQuestionTextDto) {
+    const existing = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
+    if (!existing) throw new BadRequestException('Pregunta no encontrada');
+
+    // Construir las opciones actualizadas (mergear con las existentes)
+    let updatedOptions = existing.options as any[];
+    if (dto.options && dto.options.length > 0) {
+      updatedOptions = updatedOptions.map((opt: any) => {
+        const patch = dto.options!.find((o) => o.id === opt.id);
+        return patch ? { ...opt, text: patch.text } : opt;
+      });
+    }
+
+    const updated = await this.prisma.liveQuestion.update({
+      where: { id: questionId },
+      data: {
+        ...(dto.questionText && { questionText: dto.questionText }),
+        options: updatedOptions,
+      },
+    });
+
+    // Broadcast lista de trivias activas actualizada a todos los clientes
+    const activeQuestions = await this.getActiveQuestions();
+    const activeSessions = await this.prisma.gameSession.findMany({ where: { isActive: true } });
+    for (const session of activeSessions) {
+      this.server_broadcast_active(session.id, activeQuestions);
+    }
+
+    return updated;
+  }
+
+  private server_broadcast_active(sessionId: string, questions: any[]) {
+    // Reutilizamos broadcastNewQuestion del gateway para cada sala
+    this.liveGateway['server']?.to(`bar:${sessionId}`).emit('active_questions_list', questions);
+    this.liveGateway['server']?.to(`bar:${sessionId}:tv`).emit('active_questions_list', questions);
   }
 }

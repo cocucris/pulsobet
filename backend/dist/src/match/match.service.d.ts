@@ -4,6 +4,7 @@ import { RedisService } from '../redis/redis.service';
 import { CreateManualQuestionDto } from './dto/create-manual-question.dto';
 import { SportsApiWebhookDto } from './dto/sports-api-webhook.dto';
 import { UpdateMatchScoreDto } from './dto/update-match-score.dto';
+import { UpdateQuestionTextDto } from './dto/update-question-text.dto';
 export declare class MatchService {
     private prisma;
     private liveGateway;
@@ -93,4 +94,17 @@ export declare class MatchService {
         scoreHome: number;
         scoreAway: number;
     }>;
+    updateLiveQuestion(questionId: string, dto: UpdateQuestionTextDto): Promise<{
+        id: string;
+        matchId: string;
+        questionText: string;
+        options: import("@prisma/client/runtime/library").JsonValue;
+        correctOptionId: number | null;
+        pointsReward: number;
+        imageUrl: string | null;
+        isFlash: boolean;
+        isClosed: boolean;
+        expiresAt: Date;
+    }>;
+    private server_broadcast_active;
 }
