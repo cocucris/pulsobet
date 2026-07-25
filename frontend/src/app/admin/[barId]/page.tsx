@@ -571,20 +571,9 @@ export default function AdminBarPage() {
                 </div>
               </div>
 
-              {/* Centro: Minuto y Estado */}
+              {/* Centro: VS y Estado */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-3xl font-black font-mono text-slate-300">VS</span>
-                <div className="flex flex-col items-center gap-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Minuto</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={120}
-                    value={liveMatch.currentMinute}
-                    onChange={(e) => handleMinuteUpdate(Number(e.target.value))}
-                    className="w-20 text-center text-xl font-mono font-black py-2 bg-slate-900 border border-slate-700 rounded-xl text-amber-400 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+                <span className="text-5xl font-black font-mono text-slate-300">VS</span>
                 <span className="text-[10px] font-mono text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full animate-pulse">
                   {liveMatch.status}
                 </span>

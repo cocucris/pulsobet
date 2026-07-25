@@ -121,10 +121,12 @@ export default function TvPage() {
   return (
     <main className="min-h-screen bg-[#0a0b0e] text-white flex p-6 gap-6 font-sans overflow-hidden select-none relative">
       
-      {/* SECCIÓN IZQUIERDA: Onboarding QR & Estadísticas (1/3) */}
-      <section className="w-1/3 flex flex-col justify-between bg-slate-900/40 border border-slate-800 rounded-3xl p-6 backdrop-blur-md">
+      {/* SECCIÓN IZQUIERDA: Score Hero + QR + Stats (1/3) */}
+      <section className="w-1/3 flex flex-col gap-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 backdrop-blur-md">
+
+        {/* Header PULSOBET */}
         <div className="flex flex-col items-center text-center">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-0.5">
             <span className="text-amber-500 font-mono text-2xl font-black">📈</span>
             <h1 className="text-4xl font-black text-amber-500 tracking-wider">PULSOBET</h1>
           </div>
@@ -133,75 +135,64 @@ export default function TvPage() {
           </p>
         </div>
 
-        {/* Tarjeta del Código QR Destacada */}
-        <div className="flex flex-col items-center my-auto p-5 bg-white rounded-3xl shadow-2xl border-2 border-amber-500/40">
+        {/* ⚽ MARCADOR EN VIVO — Hero card prominente */}
+        {displayMatch ? (
+          <div className="bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-500/50 rounded-2xl p-4 shadow-[0_0_30px_rgba(251,191,36,0.15)]">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">EN VIVO</span>
+            </div>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-sm font-black text-white text-center leading-tight flex-1">{displayMatch.homeTeam}</span>
+              <span className="text-4xl font-black font-mono text-amber-400 bg-slate-950 px-4 py-2 rounded-xl border border-amber-500/40 shadow-inner mx-1">
+                {displayMatch.scoreHome} - {displayMatch.scoreAway}
+              </span>
+              <span className="text-sm font-black text-white text-center leading-tight flex-1">{displayMatch.awayTeam}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-900/60 border border-slate-700 rounded-2xl p-4 flex items-center justify-center">
+            <span className="text-xs text-slate-500 font-bold">Partido por comenzar...</span>
+          </div>
+        )}
+
+        {/* Tarjeta del Código QR */}
+        <div className="flex flex-col items-center p-4 bg-white rounded-2xl shadow-xl border border-amber-500/30">
           {mounted ? (
-            <QRCodeSVG 
-              value={accessUrl} 
-              size={240}
+            <QRCodeSVG
+              value={accessUrl}
+              size={200}
               level="H"
               includeMargin={false}
-              fgColor="#090a0f" 
+              fgColor="#090a0f"
             />
           ) : (
-            <div className="w-[240px] h-[240px] bg-slate-200 animate-pulse rounded-xl" />
+            <div className="w-[200px] h-[200px] bg-slate-200 animate-pulse rounded-xl" />
           )}
-          <p className="text-slate-950 font-black text-lg mt-3 tracking-wider font-mono uppercase">pulso.bet/play</p>
+          <p className="text-slate-950 font-black text-base mt-2 tracking-wider font-mono uppercase">pulso.bet/play</p>
         </div>
 
-        {/* Bloques Estadísticos (Conectados, Puntos, Próxima Flash) */}
-        <div className="flex flex-col gap-3">
-          {/* Marcador en Vivo */}
-          {displayMatch && (
-            <div className="bg-slate-900/80 border border-amber-500/30 rounded-2xl p-3">
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block mb-2">⚽ EN VIVO</span>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-black text-white truncate">{displayMatch.homeTeam}</span>
-                <span className="text-xl font-black font-mono text-amber-400 bg-slate-950 px-3 py-1 rounded-xl border border-amber-500/30">
-                  {displayMatch.scoreHome} - {displayMatch.scoreAway}
-                </span>
-                <span className="text-xs font-black text-white truncate text-right">{displayMatch.awayTeam}</span>
+        {/* Stats compactos + Online badge */}
+        <div className="flex flex-col gap-2 mt-auto">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2">
+              <span className="text-base">👥</span>
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Jugadores</span>
+                <span className="text-lg font-black font-mono text-white">{displayLeaderboard.length}</span>
               </div>
-              {displayMatch.currentMinute > 0 && (
-                <span className="text-[10px] font-mono text-slate-400 mt-1 block text-center">
-                  {displayMatch.status === 'LIVE' ? `⏱ ${displayMatch.currentMinute}'` : displayMatch.status}
-                </span>
-              )}
             </div>
-          )}
-
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">👥</span>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">JUGADORES CONECTADOS</span>
-                <span className="text-xl font-black font-mono text-white">{displayLeaderboard.length}</span>
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2">
+              <span className="text-base">🏆</span>
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">En Juego</span>
+                <span className="text-lg font-black font-mono text-amber-400">+{pointsInPlay}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">📊</span>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">PUNTOS EN JUEGO</span>
-                <span className="text-xl font-black font-mono text-amber-400">+{pointsInPlay} PTS</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">⏱️</span>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">PRÓXIMA TRIVIA FLASH</span>
-                <span className="text-xs font-black font-mono text-amber-400 animate-pulse uppercase">EN CUALQUIER MOMENTO</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Badge Estado Sistema Online */}
-          <div className="flex items-center justify-center gap-2 py-2 bg-slate-900/60 border border-slate-850 rounded-xl">
+          {/* Badge Sistema Online */}
+          <div className="flex items-center justify-center gap-2 py-2 bg-slate-900/60 border border-slate-800 rounded-xl">
             <span className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
             <span className="font-mono font-black text-xs uppercase tracking-wider text-slate-300">
               {isConnected ? 'SISTEMA ONLINE' : 'RECONECTANDO'}
