@@ -32,15 +32,14 @@ export class SessionEngine {
     private scheduler: SessionScheduler,
   ) {}
 
-  // ─── SNAPSHOT (Single Source of Truth de Hidratación) ─────────────────
-  async buildSnapshot(sessionId: string, playerId?: string): Promise<SessionSnapshot> {
+  // Helper para asegurar que siempre exista un bar y una sesión de juego activa
+  public async ensureSession(sessionId: string) {
     let session = await this.prisma.gameSession.findUnique({
       where: { id: sessionId },
       include: { bar: true },
     });
 
     if (!session) {
-      // Fallback a cualquier sesión activa si no coincide exactamente
       session = await this.prisma.gameSession.findFirst({
         where: { isActive: true },
         include: { bar: true },
@@ -48,8 +47,41 @@ export class SessionEngine {
     }
 
     if (!session) {
-      throw new NotFoundException(`No existe sesión de juego activa para ${sessionId}`);
+      let bar = await this.prisma.bar.findFirst({
+        where: { OR: [{ id: sessionId }, { slug: sessionId }] },
+      });
+      if (!bar) {
+        bar = await this.prisma.bar.findFirst();
+      }
+      if (!bar) {
+        bar = await this.prisma.bar.upsert({
+          where: { slug: 'kilkenny' },
+          update: {},
+          create: {
+            id: 'local-kilkenny-test',
+            name: 'Kilkenny Pub',
+            slug: 'kilkenny',
+            address: 'Asunción',
+          },
+        });
+      }
+
+      session = await this.prisma.gameSession.create({
+        data: {
+          id: sessionId || 'session-demo-01',
+          barId: bar.id,
+          isActive: true,
+        },
+        include: { bar: true },
+      });
     }
+
+    return session;
+  }
+
+  // ─── SNAPSHOT (Single Source of Truth de Hidratación) ─────────────────
+  async buildSnapshot(sessionId: string, playerId?: string): Promise<SessionSnapshot> {
+    const session = await this.ensureSession(sessionId);
 
     const actualSessionId = session.id;
     const version = await this.sessionCache.getVersion(actualSessionId);

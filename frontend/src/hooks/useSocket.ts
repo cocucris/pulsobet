@@ -25,8 +25,7 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       }
     }
 
-    if (!isTv && !isAdmin && !token) return;
-
+    // Conectar socket (con o sin token para recibir eventos en tiempo real)
     const socket = io(SOCKET_URL, {
       transports: ['polling', 'websocket'],
       reconnectionAttempts: 20,

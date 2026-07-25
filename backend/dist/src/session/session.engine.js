@@ -32,7 +32,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         this.eventEmitter = eventEmitter;
         this.scheduler = scheduler;
     }
-    async buildSnapshot(sessionId, playerId) {
+    async ensureSession(sessionId) {
         let session = await this.prisma.gameSession.findUnique({
             where: { id: sessionId },
             include: { bar: true },
@@ -44,8 +44,37 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             });
         }
         if (!session) {
-            throw new common_1.NotFoundException(`No existe sesión de juego activa para ${sessionId}`);
+            let bar = await this.prisma.bar.findFirst({
+                where: { OR: [{ id: sessionId }, { slug: sessionId }] },
+            });
+            if (!bar) {
+                bar = await this.prisma.bar.findFirst();
+            }
+            if (!bar) {
+                bar = await this.prisma.bar.upsert({
+                    where: { slug: 'kilkenny' },
+                    update: {},
+                    create: {
+                        id: 'local-kilkenny-test',
+                        name: 'Kilkenny Pub',
+                        slug: 'kilkenny',
+                        address: 'Asunción',
+                    },
+                });
+            }
+            session = await this.prisma.gameSession.create({
+                data: {
+                    id: sessionId || 'session-demo-01',
+                    barId: bar.id,
+                    isActive: true,
+                },
+                include: { bar: true },
+            });
         }
+        return session;
+    }
+    async buildSnapshot(sessionId, playerId) {
+        const session = await this.ensureSession(sessionId);
         const actualSessionId = session.id;
         const version = await this.sessionCache.getVersion(actualSessionId);
         const eventNumber = await this.sessionCache.getEventNumber(actualSessionId);

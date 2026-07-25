@@ -12,6 +12,22 @@ export declare class SessionEngine {
     private scheduler;
     private readonly logger;
     constructor(prisma: PrismaService, redisService: RedisService, sessionCache: RedisSessionCacheService, eventEmitter: EventEmitter2, scheduler: SessionScheduler);
+    ensureSession(sessionId: string): Promise<{
+        bar: {
+            id: string;
+            slug: string;
+            name: string;
+            address: string;
+            createdAt: Date;
+        };
+    } & {
+        id: string;
+        barId: string;
+        matchId: string | null;
+        status: import("@prisma/client").$Enums.SessionStatus;
+        date: Date;
+        isActive: boolean;
+    }>;
     buildSnapshot(sessionId: string, playerId?: string): Promise<SessionSnapshot>;
     startMatch(sessionId: string, homeTeam: string, awayTeam: string, status?: 'SCHEDULED' | 'LIVE'): Promise<{
         id: string;

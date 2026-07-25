@@ -26,7 +26,7 @@ exports.SessionModule = SessionModule = __decorate([
             event_emitter_1.EventEmitterModule.forRoot(),
             prisma_module_1.PrismaModule,
             redis_module_1.RedisModule,
-            live_module_1.LiveModule,
+            (0, common_1.forwardRef)(() => live_module_1.LiveModule),
         ],
         controllers: [session_controller_1.SessionController],
         providers: [
