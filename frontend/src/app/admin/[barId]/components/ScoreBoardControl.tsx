@@ -157,21 +157,29 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
 
         {/* Botón para alternar Estado del Partido */}
         <div className="flex gap-2 items-center">
-          {isScheduled ? (
+          {match.status === 'LIVE' ? (
+            <button
+              onClick={() => handleScoreUpdate('none', 0, 'FINISHED')}
+              disabled={isUpdatingScore}
+              className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-black text-xs rounded-xl uppercase tracking-wider shadow-lg"
+            >
+              🏁 Finalizar Partido
+            </button>
+          ) : match.status === 'FINISHED' ? (
+            <button
+              onClick={() => handleScoreUpdate('none', 0, 'LIVE')}
+              disabled={isUpdatingScore}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl uppercase tracking-wider shadow-lg"
+            >
+              ▶️ Reabrir Partido EN VIVO
+            </button>
+          ) : (
             <button
               onClick={() => handleScoreUpdate('none', 0, 'LIVE')}
               disabled={isUpdatingScore}
               className="px-4 py-2 bg-green-500 hover:bg-green-400 text-slate-950 font-black text-xs rounded-xl uppercase tracking-wider shadow-lg animate-pulse"
             >
               ▶️ Iniciar Partido EN VIVO
-            </button>
-          ) : (
-            <button
-              onClick={() => handleScoreUpdate('none', 0, 'FINISHED')}
-              disabled={isUpdatingScore}
-              className="px-4 py-2 bg-slate-700 hover:bg-red-500/40 text-red-400 font-bold text-xs rounded-xl uppercase tracking-wider border border-slate-600"
-            >
-              🏁 Finalizar Partido
             </button>
           )}
 
@@ -199,31 +207,23 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
             placeholder="Equipo local"
             className="text-center text-sm font-black uppercase tracking-wider text-white bg-slate-900 border border-slate-700 focus:border-amber-500 focus:outline-none w-full py-2 px-3 rounded-xl"
           />
-          {isLive ? (
-            <>
-              <span className="text-6xl font-black font-mono text-amber-400">{match.scoreHome}</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleScoreUpdate('home', -1)}
-                  disabled={isUpdatingScore || match.scoreHome === 0}
-                  className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
-                >
-                  −
-                </button>
-                <button
-                  onClick={() => handleScoreUpdate('home', +1)}
-                  disabled={isUpdatingScore}
-                  className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-green-500/30 text-green-400 font-black text-xl border border-slate-600 hover:border-green-500/50 transition-all disabled:opacity-40"
-                >
-                  +
-                </button>
-              </div>
-            </>
-          ) : (
-            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-              (Sin marcador aún)
-            </span>
-          )}
+          <span className="text-6xl font-black font-mono text-amber-400">{match.scoreHome}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleScoreUpdate('home', -1)}
+              disabled={isUpdatingScore || match.scoreHome === 0}
+              className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
+            >
+              −
+            </button>
+            <button
+              onClick={() => handleScoreUpdate('home', +1)}
+              disabled={isUpdatingScore}
+              className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-green-500/30 text-green-400 font-black text-xl border border-slate-600 hover:border-green-500/50 transition-all disabled:opacity-40"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {/* Centro: VS y Estado */}
@@ -231,12 +231,14 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
           <span className="text-5xl font-black font-mono text-slate-300">VS</span>
           <span
             className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-              isLive
+              match.status === 'LIVE'
                 ? 'text-green-400 bg-green-500/10 border border-green-500/20 animate-pulse'
+                : match.status === 'FINISHED'
+                ? 'text-slate-400 bg-slate-900 border border-slate-700'
                 : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
             }`}
           >
-            {isLive ? 'EN VIVO' : 'PRE-PARTIDO'}
+            {match.status === 'LIVE' ? 'EN VIVO' : match.status === 'FINISHED' ? 'FINALIZADO' : 'PRE-PARTIDO'}
           </span>
         </div>
 
@@ -252,12 +254,25 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
             placeholder="Equipo visitante"
             className="text-center text-sm font-black uppercase tracking-wider text-white bg-slate-900 border border-slate-700 focus:border-amber-500 focus:outline-none w-full py-2 px-3 rounded-xl"
           />
-          {isLive ? (
-            <>
-              <span className="text-6xl font-black font-mono text-amber-400">{match.scoreAway}</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleScoreUpdate('away', -1)}
+          <span className="text-6xl font-black font-mono text-amber-400">{match.scoreAway}</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleScoreUpdate('away', -1)}
+              disabled={isUpdatingScore || match.scoreAway === 0}
+              className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
+            >
+              −
+            </button>
+            <button
+              onClick={() => handleScoreUpdate('away', +1)}
+              disabled={isUpdatingScore}
+              className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-green-500/30 text-green-400 font-black text-xl border border-slate-600 hover:border-green-500/50 transition-all disabled:opacity-40"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
                   disabled={isUpdatingScore || match.scoreAway === 0}
                   className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
                 >
