@@ -551,20 +551,17 @@ export class SessionEngine {
     const optionNum = Number(chosenOptionId);
 
     if (existing) {
-      await this.prisma.prediction.update({
-        where: { id: existing.id },
-        data: { chosenOptionId: optionNum },
-      });
-    } else {
-      await this.prisma.prediction.create({
-        data: {
-          playerId,
-          questionId,
-          chosenOptionId: optionNum,
-          status: 'PENDING',
-        },
-      });
+      return; // El jugador ya votó, ignoramos silenciosamente para evitar sobrecarga o manipulación.
     }
+
+    await this.prisma.prediction.create({
+      data: {
+        playerId,
+        questionId,
+        chosenOptionId: optionNum,
+        status: 'PENDING',
+      },
+    });
 
     const question = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
     if (question) {

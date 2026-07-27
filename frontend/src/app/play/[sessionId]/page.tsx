@@ -103,7 +103,9 @@ export default function PlayPage() {
 
   const currentTrivia = snapshot?.currentTrivia || null;
   const allActiveQuestions = currentTrivia ? [currentTrivia] : [];
-  const isCurrentTriviaAnswered = currentTrivia ? answeredQuestionIds.includes(currentTrivia.id) : false;
+  const isCurrentTriviaAnswered = currentTrivia 
+    ? answeredQuestionIds.includes(currentTrivia.id) || !!snapshot?.myPlayer?.hasVotedCurrentTrivia 
+    : false;
 
   const matchData = snapshot?.match;
   const leaderboard = snapshot?.leaderboardTop10 || [];

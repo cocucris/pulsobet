@@ -134,6 +134,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
           snapshot: {
             ...snapshot,
             currentTrivia: payload,
+            myPlayer: snapshot.myPlayer ? { ...snapshot.myPlayer, hasVotedCurrentTrivia: false } : null,
           },
           lastEventNumber: nextEventNumber,
         });
@@ -175,6 +176,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
           snapshot: {
             ...snapshot,
             currentTrivia: payload.trivia || payload,
+            myPlayer: snapshot.myPlayer ? { ...snapshot.myPlayer, hasVotedCurrentTrivia: false } : null,
           },
           lastEventNumber: nextEventNumber,
         });
