@@ -273,27 +273,6 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
           </div>
         </div>
       </div>
-                  disabled={isUpdatingScore || match.scoreAway === 0}
-                  className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-red-500/30 text-red-400 font-black text-xl border border-slate-600 hover:border-red-500/50 transition-all disabled:opacity-40"
-                >
-                  −
-                </button>
-                <button
-                  onClick={() => handleScoreUpdate('away', +1)}
-                  disabled={isUpdatingScore}
-                  className="w-12 h-12 rounded-xl bg-slate-700 hover:bg-green-500/30 text-green-400 font-black text-xl border border-slate-600 hover:border-green-500/50 transition-all disabled:opacity-40"
-                >
-                  +
-                </button>
-              </div>
-            </>
-          ) : (
-            <span className="text-xs font-mono font-bold text-slate-500 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-              (Sin marcador aún)
-            </span>
-          )}
-        </div>
-      </div>
 
       {isUpdatingScore && (
         <p className="text-center text-xs text-amber-400 animate-pulse mt-4">Transmitiendo a todas las pantallas...</p>
