@@ -235,6 +235,30 @@ export class SessionEngine {
     return matchPayload;
   }
 
+  async resetMatch(sessionId: string) {
+    let session = await this.prisma.gameSession.findUnique({ where: { id: sessionId } });
+    if (!session) {
+      session = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
+    }
+    if (!session) throw new BadRequestException('No existe sesión activa');
+
+    await this.prisma.gameSession.update({
+      where: { id: session.id },
+      data: { matchId: null },
+    });
+
+    await this.sessionCache.setMatch(session.id, null);
+    await this.sessionCache.incrementVersion(session.id);
+    const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+
+    this.eventEmitter.emit(
+      'match.finished',
+      new MatchFinishedEvent(session.id, null, eventNumber),
+    );
+
+    return { status: 'success', message: 'Partido reseteado' };
+  }
+
   async updateScore(
     matchId: string,
     scoreHome: number,

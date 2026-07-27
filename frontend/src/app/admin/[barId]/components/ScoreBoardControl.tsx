@@ -66,6 +66,21 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleResetMatch = async () => {
+    try {
+      setIsUpdatingScore(true);
+      await fetch(`${API_URL}/session/reset-match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+    } catch (e) {
+      console.error('Error reseteando partido:', e);
+    } finally {
+      setIsUpdatingScore(false);
+    }
+  };
+
   // CASO A: No hay partido registrado aún
   if (!match) {
     return (
@@ -141,23 +156,34 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
         </div>
 
         {/* Botón para alternar Estado del Partido */}
-        {isScheduled ? (
+        <div className="flex gap-2 items-center">
+          {isScheduled ? (
+            <button
+              onClick={() => handleScoreUpdate('none', 0, 'LIVE')}
+              disabled={isUpdatingScore}
+              className="px-4 py-2 bg-green-500 hover:bg-green-400 text-slate-950 font-black text-xs rounded-xl uppercase tracking-wider shadow-lg animate-pulse"
+            >
+              ▶️ Iniciar Partido EN VIVO
+            </button>
+          ) : (
+            <button
+              onClick={() => handleScoreUpdate('none', 0, 'FINISHED')}
+              disabled={isUpdatingScore}
+              className="px-4 py-2 bg-slate-700 hover:bg-red-500/40 text-red-400 font-bold text-xs rounded-xl uppercase tracking-wider border border-slate-600"
+            >
+              🏁 Finalizar Partido
+            </button>
+          )}
+
           <button
-            onClick={() => handleScoreUpdate('none', 0, 'LIVE')}
+            onClick={handleResetMatch}
             disabled={isUpdatingScore}
-            className="px-4 py-2 bg-green-500 hover:bg-green-400 text-slate-950 font-black text-xs rounded-xl uppercase tracking-wider shadow-lg animate-pulse"
+            className="px-3 py-2 bg-red-950/60 hover:bg-red-900 text-red-300 font-bold text-xs rounded-xl uppercase tracking-wider border border-red-800/60 transition-all"
+            title="Borra el partido actual y resetea las pantallas a cero"
           >
-            ▶️ Iniciar Partido EN VIVO
+            🧹 Limpiar Pantallas
           </button>
-        ) : (
-          <button
-            onClick={() => handleScoreUpdate('none', 0, 'FINISHED')}
-            disabled={isUpdatingScore}
-            className="px-4 py-2 bg-slate-700 hover:bg-red-500/40 text-red-400 font-bold text-xs rounded-xl uppercase tracking-wider border border-slate-600"
-          >
-            🏁 Finalizar Partido
-          </button>
-        )}
+        </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 items-center">

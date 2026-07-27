@@ -19,4 +19,11 @@ export class SessionController {
   ) {
     return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam, body.status || 'SCHEDULED');
   }
+
+  @Post('reset-match')
+  async resetMatch(
+    @Body() body: { sessionId: string },
+  ) {
+    return this.sessionEngine.resetMatch(body.sessionId);
+  }
 }
