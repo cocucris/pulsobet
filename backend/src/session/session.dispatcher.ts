@@ -31,6 +31,7 @@ export class SocketDispatcher {
         scoreAway: event.scoreAway,
         homeTeam: event.homeTeam,
         awayTeam: event.awayTeam,
+        status: event.status,
         eventNumber: event.eventNumber,
       });
     } catch (e) {

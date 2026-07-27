@@ -5,6 +5,7 @@ export class MatchScoreUpdatedEvent {
     public readonly scoreAway: number,
     public readonly homeTeam: string,
     public readonly awayTeam: string,
+    public readonly status: string,
     public readonly eventNumber: number,
   ) {}
 }

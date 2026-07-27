@@ -106,24 +106,7 @@ export class SessionEngine {
       }
     }
 
-    if (!matchData) {
-      const liveMatch = await this.prisma.match.findFirst({
-        where: { status: 'LIVE' },
-        orderBy: { startTime: 'desc' },
-      });
-      if (liveMatch) {
-        matchData = {
-          id: liveMatch.id,
-          homeTeam: liveMatch.homeTeam,
-          awayTeam: liveMatch.awayTeam,
-          scoreHome: liveMatch.scoreHome,
-          scoreAway: liveMatch.scoreAway,
-          status: liveMatch.status,
-          currentMinute: liveMatch.currentMinute,
-        };
-        await this.sessionCache.setMatch(actualSessionId, matchData);
-      }
-    }
+
 
     // 2. Trivia activa actual
     let currentTrivia = await this.sessionCache.getCurrentTrivia(actualSessionId);
@@ -300,6 +283,7 @@ export class SessionEngine {
         match.scoreAway,
         match.homeTeam,
         match.awayTeam,
+        match.status,
         eventNumber,
       ),
     );
