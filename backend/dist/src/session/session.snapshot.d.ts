@@ -13,7 +13,7 @@ export interface SessionSnapshot {
         status: 'SCHEDULED' | 'LIVE' | 'PAUSED' | 'FINISHED';
         currentMinute: number;
     } | null;
-    currentTrivia: {
+    activeTrivias: {
         id: string;
         questionText: string;
         options: {
@@ -27,7 +27,7 @@ export interface SessionSnapshot {
         expiresAt: string;
         totalVotes: number;
         imageUrl?: string | null;
-    } | null;
+    }[];
     leaderboardTop10: {
         rank: number;
         id: string;
@@ -39,7 +39,7 @@ export interface SessionSnapshot {
         id: string;
         nickname: string;
         totalPoints: number;
-        hasVotedCurrentTrivia: boolean;
+        votedTriviaIds: string[];
     } | null;
     connectedPlayersCount: number;
     rewards: {

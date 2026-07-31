@@ -95,15 +95,15 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 await this.sessionCache.setMatch(actualSessionId, matchData);
             }
         }
-        let currentTrivia = await this.sessionCache.getCurrentTrivia(actualSessionId);
-        if (!currentTrivia) {
-            const activeQuestion = await this.prisma.liveQuestion.findFirst({
-                where: { correctOptionId: null, isClosed: false },
-                orderBy: { expiresAt: 'desc' },
+        let activeTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
+        if (activeTrivias.length === 0) {
+            const activeQuestions = await this.prisma.liveQuestion.findMany({
+                where: { correctOptionId: null, isClosed: false, expiresAt: { gt: new Date() } },
+                orderBy: { expiresAt: 'asc' },
             });
-            if (activeQuestion) {
-                currentTrivia = await this.enrichQuestionStats(activeQuestion);
-                await this.sessionCache.setCurrentTrivia(actualSessionId, currentTrivia);
+            if (activeQuestions.length > 0) {
+                activeTrivias = await Promise.all(activeQuestions.map((q) => this.enrichQuestionStats(q)));
+                await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
             }
         }
         const topPlayersRaw = await this.prisma.player.findMany({
@@ -122,18 +122,19 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         if (playerId) {
             const playerObj = await this.prisma.player.findUnique({ where: { id: playerId } });
             if (playerObj) {
-                let hasVotedCurrentTrivia = false;
-                if (currentTrivia?.id) {
-                    const vote = await this.prisma.prediction.findFirst({
-                        where: { playerId, questionId: currentTrivia.id },
+                let votedTriviaIds = [];
+                if (activeTrivias.length > 0) {
+                    const votes = await this.prisma.prediction.findMany({
+                        where: { playerId, questionId: { in: activeTrivias.map((t) => t.id) } },
+                        select: { questionId: true },
                     });
-                    hasVotedCurrentTrivia = !!vote;
+                    votedTriviaIds = votes.map((v) => v.questionId);
                 }
                 myPlayer = {
                     id: playerObj.id,
                     nickname: playerObj.nickname,
                     totalPoints: playerObj.totalPoints,
-                    hasVotedCurrentTrivia,
+                    votedTriviaIds,
                 };
             }
         }
@@ -152,7 +153,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             eventNumber,
             serverTime: new Date().toISOString(),
             match: matchData,
-            currentTrivia,
+            activeTrivias,
             leaderboardTop10,
             myPlayer,
             connectedPlayersCount,
@@ -312,7 +313,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             },
         });
         const enrichedTrivia = await this.enrichQuestionStats(liveQuestion);
-        await this.sessionCache.setCurrentTrivia(activeSession.id, enrichedTrivia);
+        await this.sessionCache.upsertActiveTrivia(activeSession.id, enrichedTrivia);
         await this.sessionCache.incrementVersion(activeSession.id);
         const eventNumber = await this.sessionCache.incrementEventNumber(activeSession.id);
         const delayMs = expiresAt.getTime() - Date.now();
@@ -334,7 +335,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             where: { id: triviaId },
             data: { isClosed: true },
         });
-        await this.sessionCache.clearCurrentTrivia(sessionId);
+        await this.sessionCache.removeActiveTrivia(sessionId, triviaId);
         await this.sessionCache.incrementVersion(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         this.eventEmitter.emit('trivia.closed', new session_events_1.TriviaClosedEvent(sessionId, triviaId, eventNumber));
@@ -386,7 +387,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             });
             await this.redisService.incrementPlayerScore(targetSessionId, losePred.playerId, -pointsToAward);
         }
-        await this.sessionCache.clearCurrentTrivia(targetSessionId);
+        await this.sessionCache.removeActiveTrivia(targetSessionId, questionId);
         await this.sessionCache.incrementVersion(targetSessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(targetSessionId);
         const topPlayers = await this.getLeaderboard(targetSessionId);
@@ -411,7 +412,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         const activeSession = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
         const sessionId = activeSession ? activeSession.id : 'session-demo-01';
         const enriched = await this.enrichQuestionStats(updated);
-        await this.sessionCache.setCurrentTrivia(sessionId, enriched);
+        await this.sessionCache.upsertActiveTrivia(sessionId, enriched);
         await this.sessionCache.incrementVersion(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         this.eventEmitter.emit('trivia.opened', new session_events_1.TriviaOpenedEvent(sessionId, enriched, eventNumber));
@@ -444,7 +445,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             },
         });
         const enriched = await this.enrichQuestionStats(question);
-        await this.sessionCache.setCurrentTrivia(sessionId, enriched);
+        await this.sessionCache.upsertActiveTrivia(sessionId, enriched);
         await this.sessionCache.incrementVersion(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         this.eventEmitter.emit('player.voted', new session_events_1.PlayerVotedEvent(sessionId, questionId, enriched.options, enriched.totalVotes, eventNumber));

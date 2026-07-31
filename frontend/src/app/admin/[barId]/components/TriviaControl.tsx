@@ -13,7 +13,7 @@ const PRESET_IMAGES = [
 ];
 
 export function TriviaControl({ barId }: { barId: string }) {
-  const currentTrivia = useSessionStore((s) => s.snapshot?.currentTrivia);
+  const activeTrivias = useSessionStore((s) => s.snapshot?.activeTrivias) || [];
 
   const [questionText, setQuestionText] = useState('');
   const [pointsReward, setPointsReward] = useState(150);
@@ -28,8 +28,8 @@ export function TriviaControl({ barId }: { barId: string }) {
   const [isLaunchingQuestion, setIsLaunchingQuestion] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
 
-  // Modo edición inline
-  const [isEditing, setIsEditing] = useState(false);
+  // Modo edición inline (por trivia)
+  const [editingTriviaId, setEditingTriviaId] = useState<string | null>(null);
   const [editQuestionText, setEditQuestionText] = useState('');
   const [editOptions, setEditOptions] = useState<{ id: number; text: string }[]>([]);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -90,25 +90,24 @@ export function TriviaControl({ barId }: { barId: string }) {
     }
   };
 
-  const handleStartEdit = () => {
-    if (!currentTrivia) return;
-    setEditQuestionText(currentTrivia.questionText);
-    setEditOptions(currentTrivia.options.map((o) => ({ id: o.id, text: o.text })));
-    setIsEditing(true);
+  const handleStartEdit = (trivia: (typeof activeTrivias)[number]) => {
+    setEditQuestionText(trivia.questionText);
+    setEditOptions(trivia.options.map((o) => ({ id: o.id, text: o.text })));
+    setEditingTriviaId(trivia.id);
   };
 
   const handleSaveEdit = async () => {
-    if (!currentTrivia) return;
+    if (!editingTriviaId) return;
     try {
       setIsSavingEdit(true);
-      const res = await fetch(`${API_URL}/match/questions/${currentTrivia.id}`, {
+      const res = await fetch(`${API_URL}/match/questions/${editingTriviaId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionText: editQuestionText, options: editOptions }),
       });
 
       if (res.ok) {
-        setIsEditing(false);
+        setEditingTriviaId(null);
       }
     } catch (e) {
       console.error('Error al guardar edición:', e);
@@ -257,80 +256,82 @@ export function TriviaControl({ barId }: { barId: string }) {
         </button>
       </form>
 
-      {/* Trivia Activa en Votación (sincronizada reactivamente) */}
-      {currentTrivia && (
+      {/* Trivias Activas en Votación (sincronizadas reactivamente, pueden coexistir varias) */}
+      {activeTrivias.length > 0 && (
         <div className="mt-6 pt-4 border-t border-slate-700 flex flex-col gap-4">
           <span className="text-xs font-black uppercase text-amber-400 tracking-wider block">
-            🎯 Trivia Activa en Votación
+            🎯 Trivias Activas en Votación ({activeTrivias.length})
           </span>
-          <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
-            {isEditing ? (
-              <div className="flex flex-col gap-3">
-                <span className="text-xs font-black text-amber-400 uppercase tracking-wider">✏️ Editando Trivia</span>
-                <input
-                  type="text"
-                  value={editQuestionText}
-                  onChange={(e) => setEditQuestionText(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-amber-500/40 rounded-lg text-sm font-bold text-white"
-                />
-                {editOptions.map((opt, idx) => (
+          {activeTrivias.map((trivia) => (
+            <div key={trivia.id} className="bg-slate-900 p-4 rounded-xl border border-slate-700">
+              {editingTriviaId === trivia.id ? (
+                <div className="flex flex-col gap-3">
+                  <span className="text-xs font-black text-amber-400 uppercase tracking-wider">✏️ Editando Trivia</span>
                   <input
-                    key={opt.id}
                     type="text"
-                    value={opt.text}
-                    onChange={(e) => {
-                      const updated = editOptions.map((o) => (o.id === opt.id ? { ...o, text: e.target.value } : o));
-                      setEditOptions(updated);
-                    }}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm font-bold text-white"
+                    value={editQuestionText}
+                    onChange={(e) => setEditQuestionText(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-amber-500/40 rounded-lg text-sm font-bold text-white"
                   />
-                ))}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={handleSaveEdit}
-                    disabled={isSavingEdit}
-                    className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg uppercase tracking-wider"
-                  >
-                    {isSavingEdit ? 'Guardando...' : '✓ Guardar y Transmitir'}
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 bg-slate-700 text-slate-300 font-bold text-xs rounded-lg uppercase tracking-wider"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-amber-400">
-                    Trivia (+{currentTrivia.pointsReward || 150} PTS) • {currentTrivia.totalVotes || 0} VOTOS
-                  </span>
-                  <button
-                    onClick={handleStartEdit}
-                    className="text-slate-400 hover:text-amber-400 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-800"
-                  >
-                    ✏️ Editar
-                  </button>
-                </div>
-                <p className="text-sm font-bold text-white mb-3">{currentTrivia.questionText}</p>
-                <span className="text-xs text-slate-400 font-semibold block mb-2">Declarar Respuesta Correcta:</span>
-                <div className="grid grid-cols-2 gap-3">
-                  {currentTrivia.options.map((opt) => (
-                    <button
+                  {editOptions.map((opt) => (
+                    <input
                       key={opt.id}
-                      disabled={isResolving}
-                      onClick={() => handleResolveTrivia(currentTrivia.id, opt.id)}
-                      className="py-2.5 px-3 bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-amber-500/30 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                    >
-                      🏆 Gana: {opt.text} ({opt.percentage || 0}%)
-                    </button>
+                      type="text"
+                      value={opt.text}
+                      onChange={(e) => {
+                        const updated = editOptions.map((o) => (o.id === opt.id ? { ...o, text: e.target.value } : o));
+                        setEditOptions(updated);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm font-bold text-white"
+                    />
                   ))}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleSaveEdit}
+                      disabled={isSavingEdit}
+                      className="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg uppercase tracking-wider"
+                    >
+                      {isSavingEdit ? 'Guardando...' : '✓ Guardar y Transmitir'}
+                    </button>
+                    <button
+                      onClick={() => setEditingTriviaId(null)}
+                      className="px-4 py-2 bg-slate-700 text-slate-300 font-bold text-xs rounded-lg uppercase tracking-wider"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-amber-400">
+                      {trivia.isFlash ? '⚡ FLASH • ' : ''}Trivia (+{trivia.pointsReward || 150} PTS) • {trivia.totalVotes || 0} VOTOS
+                    </span>
+                    <button
+                      onClick={() => handleStartEdit(trivia)}
+                      className="text-slate-400 hover:text-amber-400 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-800"
+                    >
+                      ✏️ Editar
+                    </button>
+                  </div>
+                  <p className="text-sm font-bold text-white mb-3">{trivia.questionText}</p>
+                  <span className="text-xs text-slate-400 font-semibold block mb-2">Declarar Respuesta Correcta:</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {trivia.options.map((opt) => (
+                      <button
+                        key={opt.id}
+                        disabled={isResolving}
+                        onClick={() => handleResolveTrivia(trivia.id, opt.id)}
+                        className="py-2.5 px-3 bg-amber-500/20 hover:bg-amber-500 hover:text-slate-950 text-amber-400 border border-amber-500/30 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                      >
+                        🏆 Gana: {opt.text} ({opt.percentage || 0}%)
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </section>

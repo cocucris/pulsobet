@@ -102,10 +102,13 @@ export default function PlayPage() {
   const snapshot = useSessionStore((s) => s.snapshot);
   const isConnected = useSessionStore((s) => s.isConnected);
 
-  const currentTrivia = snapshot?.currentTrivia || null;
-  const allActiveQuestions = currentTrivia ? [currentTrivia] : [];
-  const isCurrentTriviaAnswered = currentTrivia 
-    ? answeredQuestionIds.includes(currentTrivia.id) || !!snapshot?.myPlayer?.hasVotedCurrentTrivia 
+  const allActiveQuestions = snapshot?.activeTrivias || [];
+  // La trivia mostrada es la de la pestaña seleccionada (clamp si cambia el array)
+  const currentTrivia = allActiveQuestions.length > 0
+    ? allActiveQuestions[Math.min(selectedTriviaIndex, allActiveQuestions.length - 1)]
+    : null;
+  const isCurrentTriviaAnswered = currentTrivia
+    ? answeredQuestionIds.includes(currentTrivia.id) || !!snapshot?.myPlayer?.votedTriviaIds?.includes(currentTrivia.id)
     : false;
 
   const matchData = snapshot?.match;

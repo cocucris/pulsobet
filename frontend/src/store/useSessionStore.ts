@@ -17,7 +17,7 @@ export interface SessionSnapshot {
     currentMinute: number;
   } | null;
 
-  currentTrivia: {
+  activeTrivias: {
     id: string;
     questionText: string;
     options: { id: number; text: string; count: number; percentage: number }[];
@@ -26,7 +26,7 @@ export interface SessionSnapshot {
     expiresAt: string;
     totalVotes: number;
     imageUrl?: string | null;
-  } | null;
+  }[];
 
   leaderboardTop10: {
     rank: number;
@@ -40,7 +40,7 @@ export interface SessionSnapshot {
     id: string;
     nickname: string;
     totalPoints: number;
-    hasVotedCurrentTrivia: boolean;
+    votedTriviaIds: string[];
   } | null;
 
   connectedPlayersCount: number;
@@ -95,7 +95,10 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       return;
     }
 
-    const nextEventNumber = payload?.eventNumber || lastEventNumber + 1;
+    // Los eventos legacy SIN eventNumber aplican su cambio pero NO tocan el contador:
+    // asignarles un número sintético inflaba lastEventNumber y provocaba que los
+    // eventos numerados reales posteriores (votos, goles) fueran descartados.
+    const nextEventNumber = payload?.eventNumber || lastEventNumber;
 
     // Direct compatibility event handlers
     if (event === 'leaderboard_update' && Array.isArray(payload)) {
@@ -132,11 +135,14 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
     if (event === 'new_question_active' && payload) {
       if (snapshot) {
+        // Upsert por id: varias trivias pueden coexistir activas
+        const exists = snapshot.activeTrivias.some((t) => t.id === payload.id);
         set({
           snapshot: {
             ...snapshot,
-            currentTrivia: payload,
-            myPlayer: snapshot.myPlayer ? { ...snapshot.myPlayer, hasVotedCurrentTrivia: false } : null,
+            activeTrivias: exists
+              ? snapshot.activeTrivias.map((t) => (t.id === payload.id ? payload : t))
+              : [...snapshot.activeTrivias, payload],
           },
           lastEventNumber: nextEventNumber,
         });
@@ -146,10 +152,13 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
     if (event === 'question_resolved') {
       if (snapshot) {
+        const triviaId = payload?.triviaId;
         set({
           snapshot: {
             ...snapshot,
-            currentTrivia: null,
+            activeTrivias: triviaId
+              ? snapshot.activeTrivias.filter((t) => t.id !== triviaId)
+              : snapshot.activeTrivias,
           },
           lastEventNumber: nextEventNumber,
         });
@@ -183,22 +192,28 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         break;
 
       case 'TRIVIA_OPENED':
-      case 'TRIVIA_CREATED':
+      case 'TRIVIA_CREATED': {
+        const trivia = payload.trivia || payload;
+        const exists = snapshot.activeTrivias.some((t) => t.id === trivia.id);
         set({
           snapshot: {
             ...snapshot,
-            currentTrivia: payload.trivia || payload,
-            myPlayer: snapshot.myPlayer ? { ...snapshot.myPlayer, hasVotedCurrentTrivia: false } : null,
+            activeTrivias: exists
+              ? snapshot.activeTrivias.map((t) => (t.id === trivia.id ? trivia : t))
+              : [...snapshot.activeTrivias, trivia],
           },
           lastEventNumber: nextEventNumber,
         });
         break;
+      }
 
       case 'TRIVIA_CLOSED':
         set({
           snapshot: {
             ...snapshot,
-            currentTrivia: null,
+            activeTrivias: payload?.triviaId
+              ? snapshot.activeTrivias.filter((t) => t.id !== payload.triviaId)
+              : snapshot.activeTrivias,
           },
           lastEventNumber: nextEventNumber,
         });
@@ -208,7 +223,9 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         set({
           snapshot: {
             ...snapshot,
-            currentTrivia: null,
+            activeTrivias: payload?.triviaId
+              ? snapshot.activeTrivias.filter((t) => t.id !== payload.triviaId)
+              : snapshot.activeTrivias,
             leaderboardTop10: payload.leaderboard || snapshot.leaderboardTop10,
           },
           lastEventNumber: nextEventNumber,
@@ -237,19 +254,21 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         break;
 
       case 'PLAYER_VOTED':
-        if (snapshot.currentTrivia) {
-          set({
-            snapshot: {
-              ...snapshot,
-              currentTrivia: {
-                ...snapshot.currentTrivia,
-                options: payload.options || snapshot.currentTrivia.options,
-                totalVotes: payload.totalVotes ?? snapshot.currentTrivia.totalVotes,
-              },
-            },
-            lastEventNumber: nextEventNumber,
-          });
-        }
+        set({
+          snapshot: {
+            ...snapshot,
+            activeTrivias: snapshot.activeTrivias.map((t) =>
+              t.id === payload.triviaId
+                ? {
+                    ...t,
+                    options: payload.options || t.options,
+                    totalVotes: payload.totalVotes ?? t.totalVotes,
+                  }
+                : t,
+            ),
+          },
+          lastEventNumber: nextEventNumber,
+        });
         break;
 
       default:

@@ -49,7 +49,7 @@ export class MatchService {
 
   async getActiveQuestions(sessionId: string) {
     const snapshot = await this.sessionEngine.buildSnapshot(sessionId);
-    return snapshot.currentTrivia ? [snapshot.currentTrivia] : [];
+    return snapshot.activeTrivias;
   }
 
   async handleSportsWebhook(dto: SportsApiWebhookDto) {

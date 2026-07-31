@@ -45,9 +45,8 @@ export default function TvPage() {
 
   const displayLeaderboard = snapshot?.leaderboardTop10 || [];
   const displayMatch = snapshot?.match || null;
-  const currentTrivia = snapshot?.currentTrivia || null;
 
-  const rawActiveQuestions = currentTrivia ? [currentTrivia] : [];
+  const rawActiveQuestions = snapshot?.activeTrivias || [];
 
 
   // Separar Trivias Estándar vs Trivias Flash ⚡ Activas (con tiempo restante > 0)

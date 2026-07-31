@@ -123,35 +123,48 @@ let RedisSessionCacheService = RedisSessionCacheService_1 = class RedisSessionCa
             return null;
         }
     }
-    async setCurrentTrivia(sessionId, triviaData) {
+    async getActiveTrivias(sessionId) {
+        try {
+            if (!this.client)
+                return [];
+            const data = await this.client.get(`session:${sessionId}:trivias`);
+            return data ? JSON.parse(data) : [];
+        }
+        catch (e) {
+            return [];
+        }
+    }
+    async setActiveTrivias(sessionId, trivias) {
         try {
             if (!this.client)
                 return;
-            await this.client.set(`session:${sessionId}:trivia`, JSON.stringify(triviaData));
+            await this.client.set(`session:${sessionId}:trivias`, JSON.stringify(trivias));
         }
         catch (e) {
-            this.logger.warn(`Redis fallback on setCurrentTrivia: ${e.message}`);
+            this.logger.warn(`Redis fallback on setActiveTrivias: ${e.message}`);
         }
     }
-    async getCurrentTrivia(sessionId) {
+    async upsertActiveTrivia(sessionId, trivia) {
         try {
-            if (!this.client)
-                return null;
-            const data = await this.client.get(`session:${sessionId}:trivia`);
-            return data ? JSON.parse(data) : null;
+            const trivias = await this.getActiveTrivias(sessionId);
+            const idx = trivias.findIndex((t) => t.id === trivia.id);
+            if (idx >= 0)
+                trivias[idx] = trivia;
+            else
+                trivias.push(trivia);
+            await this.setActiveTrivias(sessionId, trivias);
         }
         catch (e) {
-            return null;
+            this.logger.warn(`Redis fallback on upsertActiveTrivia: ${e.message}`);
         }
     }
-    async clearCurrentTrivia(sessionId) {
+    async removeActiveTrivia(sessionId, triviaId) {
         try {
-            if (!this.client)
-                return;
-            await this.client.del(`session:${sessionId}:trivia`);
+            const trivias = await this.getActiveTrivias(sessionId);
+            await this.setActiveTrivias(sessionId, trivias.filter((t) => t.id !== triviaId));
         }
         catch (e) {
-            this.logger.warn(`Redis fallback on clearCurrentTrivia: ${e.message}`);
+            this.logger.warn(`Redis fallback on removeActiveTrivia: ${e.message}`);
         }
     }
     async setRewards(barId, rewards) {

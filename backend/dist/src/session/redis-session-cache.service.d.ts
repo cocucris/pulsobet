@@ -13,9 +13,10 @@ export declare class RedisSessionCacheService {
     getConnectedCount(sessionId: string): Promise<number>;
     setMatch(sessionId: string, matchData: any): Promise<void>;
     getMatch(sessionId: string): Promise<any | null>;
-    setCurrentTrivia(sessionId: string, triviaData: any): Promise<void>;
-    getCurrentTrivia(sessionId: string): Promise<any | null>;
-    clearCurrentTrivia(sessionId: string): Promise<void>;
+    getActiveTrivias(sessionId: string): Promise<any[]>;
+    setActiveTrivias(sessionId: string, trivias: any[]): Promise<void>;
+    upsertActiveTrivia(sessionId: string, trivia: any): Promise<void>;
+    removeActiveTrivia(sessionId: string, triviaId: string): Promise<void>;
     setRewards(barId: string, rewards: any[]): Promise<void>;
     getRewards(barId: string): Promise<any[] | null>;
 }

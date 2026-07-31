@@ -15,7 +15,7 @@ export interface SessionSnapshot {
     currentMinute: number;
   } | null;
 
-  currentTrivia: {
+  activeTrivias: {
     id: string;
     questionText: string;
     options: { id: number; text: string; count: number; percentage: number }[];
@@ -24,7 +24,7 @@ export interface SessionSnapshot {
     expiresAt: string;
     totalVotes: number;
     imageUrl?: string | null;
-  } | null;
+  }[];
 
   leaderboardTop10: {
     rank: number;
@@ -38,7 +38,7 @@ export interface SessionSnapshot {
     id: string;
     nickname: string;
     totalPoints: number;
-    hasVotedCurrentTrivia: boolean;
+    votedTriviaIds: string[];
   } | null;
 
   connectedPlayersCount: number;

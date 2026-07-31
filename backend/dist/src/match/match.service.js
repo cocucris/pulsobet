@@ -42,7 +42,7 @@ let MatchService = class MatchService {
     }
     async getActiveQuestions(sessionId) {
         const snapshot = await this.sessionEngine.buildSnapshot(sessionId);
-        return snapshot.currentTrivia ? [snapshot.currentTrivia] : [];
+        return snapshot.activeTrivias;
     }
     async handleSportsWebhook(dto) {
         const match = await this.prisma.match.findUnique({
