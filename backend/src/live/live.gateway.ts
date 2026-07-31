@@ -19,6 +19,10 @@ import { SessionEngine } from '../session/session.engine';
     origin: true,
     credentials: true,
   },
+  // Tolerar la latencia del proxy de Railway sin cortar clientes sanos
+  pingInterval: 10000,
+  pingTimeout: 30000,
+  transports: ['websocket', 'polling'],
 })
 export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -120,7 +124,9 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
-   * Recepción de predicción protegida mediante JWT
+   * Recepción de predicción protegida mediante JWT.
+   * Siempre responde con ACK explícito (VOTE_ACCEPTED / VOTE_REJECTED) para que
+   * el jugador sepa si su voto quedó registrado.
    */
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('submit_prediction')
@@ -129,10 +135,31 @@ export class LiveGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { questionId: string; chosenOptionId: number },
   ) {
     const user = (client as any).user;
-    if (user?.sub && user?.sessionId && data.questionId && data.chosenOptionId !== undefined) {
-      await this.sessionEngine.submitVote(user.sessionId, user.sub, data.questionId, data.chosenOptionId);
+    if (!user?.sub || !user?.sessionId || !data?.questionId || data?.chosenOptionId === undefined) {
+      client.emit('VOTE_REJECTED', { questionId: data?.questionId, reason: 'Datos de voto incompletos.' });
+      return { status: 'rejected' };
     }
-    return { status: 'received', playerId: user?.sub };
+
+    try {
+      const result = await this.sessionEngine.submitVote(
+        user.sessionId,
+        user.sub,
+        data.questionId,
+        data.chosenOptionId,
+      );
+
+      if (result?.accepted) {
+        client.emit('VOTE_ACCEPTED', { questionId: data.questionId });
+        return { status: 'received', playerId: user.sub };
+      }
+
+      client.emit('VOTE_REJECTED', { questionId: data.questionId, reason: result?.reason || 'Voto rechazado.' });
+      return { status: 'rejected', reason: result?.reason };
+    } catch (err) {
+      this.logger.error(`Error procesando voto de ${user.sub}: ${err.message}`);
+      client.emit('VOTE_REJECTED', { questionId: data.questionId, reason: 'Error interno al registrar el voto.' });
+      return { status: 'error' };
+    }
   }
 
   sendLeaderboardUpdate(sessionId: string, topPlayers: any[]) {

@@ -3,8 +3,11 @@ import { io, Socket } from 'socket.io-client';
 import { useSessionStore } from '@/store/useSessionStore';
 import { API_URL, WS_URL } from '@/config/api';
 
+export type VoteResult = { ok: boolean; reason?: string };
+
 export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: boolean = false) => {
   const socketRef = useRef<Socket | null>(null);
+  const voteCallbacksRef = useRef(new Map<string, (result: VoteResult) => void>());
 
   useEffect(() => {
     if (!sessionId) return;
@@ -24,9 +27,11 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       }
     }
 
-    // Conectar socket (con o sin token para recibir eventos en tiempo real)
+    // Conectar socket (con o sin token para recibir eventos en tiempo real).
+    // WebSocket directo: el long-polling a través del proxy de Railway provocaba
+    // un bucle de desconexiones cada ~5s y se perdían los eventos en vivo.
     const socket = io(WS_URL, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -44,12 +49,6 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
 
       const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
       socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
-
-      if (isTv) {
-        socket.emit('join_tv_screen', { sessionId });
-      } else if (!isAdmin) {
-        socket.emit('join_bar_session', { sessionId, nickname });
-      }
     });
 
     socket.on('reconnect', () => {
@@ -95,6 +94,29 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       }
     });
 
+    // ACK de voto: el servidor confirma o rechaza cada predicción
+    socket.on('VOTE_ACCEPTED', (payload: { questionId: string }) => {
+      const cb = payload?.questionId ? voteCallbacksRef.current.get(payload.questionId) : undefined;
+      if (cb) {
+        voteCallbacksRef.current.delete(payload.questionId);
+        cb({ ok: true });
+      }
+    });
+
+    socket.on('VOTE_REJECTED', (payload: { questionId: string; reason?: string }) => {
+      const cb = payload?.questionId ? voteCallbacksRef.current.get(payload.questionId) : undefined;
+      if (cb) {
+        voteCallbacksRef.current.delete(payload.questionId);
+        cb({ ok: false, reason: payload?.reason });
+      }
+    });
+
+    socket.on('unauthorized', (payload: { message?: string }) => {
+      // Token inválido o faltante: rechazar todos los votos pendientes
+      voteCallbacksRef.current.forEach((cb) => cb({ ok: false, reason: payload?.message || 'Sesión inválida. Volvé a registrarte.' }));
+      voteCallbacksRef.current.clear();
+    });
+
     // Escuchar eventos de dominio
     const domainEvents = [
       'MATCH_STARTED',
@@ -128,9 +150,22 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     };
   }, [sessionId, isTv, isAdmin]);
 
-  const sendPrediction = useCallback((questionId: string, chosenOptionId: number) => {
+  const sendPrediction = useCallback((questionId: string, chosenOptionId: number, onResult?: (result: VoteResult) => void) => {
     if (socketRef.current && socketRef.current.connected) {
+      if (onResult) {
+        voteCallbacksRef.current.set(questionId, onResult);
+        // Si el servidor no responde en 8s, reportar fallo para no dejar al jugador colgado
+        setTimeout(() => {
+          const cb = voteCallbacksRef.current.get(questionId);
+          if (cb) {
+            voteCallbacksRef.current.delete(questionId);
+            cb({ ok: false, reason: 'El servidor no confirmó el voto. Intentá de nuevo.' });
+          }
+        }, 8000);
+      }
       socketRef.current.emit('submit_prediction', { questionId, chosenOptionId });
+    } else {
+      onResult?.({ ok: false, reason: 'Sin conexión en este momento. Intentá de nuevo.' });
     }
   }, []);
 

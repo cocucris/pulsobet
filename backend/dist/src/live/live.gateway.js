@@ -79,10 +79,24 @@ let LiveGateway = LiveGateway_1 = class LiveGateway {
     }
     async handlePrediction(client, data) {
         const user = client.user;
-        if (user?.sub && user?.sessionId && data.questionId && data.chosenOptionId !== undefined) {
-            await this.sessionEngine.submitVote(user.sessionId, user.sub, data.questionId, data.chosenOptionId);
+        if (!user?.sub || !user?.sessionId || !data?.questionId || data?.chosenOptionId === undefined) {
+            client.emit('VOTE_REJECTED', { questionId: data?.questionId, reason: 'Datos de voto incompletos.' });
+            return { status: 'rejected' };
         }
-        return { status: 'received', playerId: user?.sub };
+        try {
+            const result = await this.sessionEngine.submitVote(user.sessionId, user.sub, data.questionId, data.chosenOptionId);
+            if (result?.accepted) {
+                client.emit('VOTE_ACCEPTED', { questionId: data.questionId });
+                return { status: 'received', playerId: user.sub };
+            }
+            client.emit('VOTE_REJECTED', { questionId: data.questionId, reason: result?.reason || 'Voto rechazado.' });
+            return { status: 'rejected', reason: result?.reason };
+        }
+        catch (err) {
+            this.logger.error(`Error procesando voto de ${user.sub}: ${err.message}`);
+            client.emit('VOTE_REJECTED', { questionId: data.questionId, reason: 'Error interno al registrar el voto.' });
+            return { status: 'error' };
+        }
     }
     sendLeaderboardUpdate(sessionId, topPlayers) {
         this.broadcastToSession(sessionId, 'leaderboard_update', topPlayers);
@@ -148,6 +162,9 @@ exports.LiveGateway = LiveGateway = LiveGateway_1 = __decorate([
             origin: true,
             credentials: true,
         },
+        pingInterval: 10000,
+        pingTimeout: 30000,
+        transports: ['websocket', 'polling'],
     }),
     __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => session_engine_1.SessionEngine))),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,

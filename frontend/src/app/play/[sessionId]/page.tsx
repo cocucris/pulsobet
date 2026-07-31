@@ -94,6 +94,7 @@ export default function PlayPage() {
 
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
   const [selectedTriviaIndex, setSelectedTriviaIndex] = useState(0);
+  const [voteError, setVoteError] = useState<string | null>(null);
 
   // Hook WebSockets
   const { sendPrediction } = useSocket(sessionId, false, false);
@@ -156,14 +157,20 @@ export default function PlayPage() {
     }
   };
 
-  // Envío de predicción
+  // Envío de predicción: solo se marca como respondida cuando el servidor confirma (ACK)
   const handleSelectOption = (questionId: string, optionId: number) => {
-    sendPrediction(questionId, optionId);
-    setAnsweredQuestionIds((prev) => [...prev, questionId]);
+    setVoteError(null);
 
-    setTimeout(() => {
-      if (playerId) refreshPlayerData(playerId);
-    }, 1500);
+    sendPrediction(questionId, optionId, (result) => {
+      if (result.ok) {
+        setAnsweredQuestionIds((prev) => (prev.includes(questionId) ? prev : [...prev, questionId]));
+        setTimeout(() => {
+          if (playerId) refreshPlayerData(playerId);
+        }, 1500);
+      } else {
+        setVoteError(result.reason || 'No se pudo registrar tu voto. Intentá de nuevo.');
+      }
+    });
   };
 
   // Reclamo de premio por puntos

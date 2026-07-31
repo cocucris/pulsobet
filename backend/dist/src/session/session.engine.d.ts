@@ -102,7 +102,13 @@ export declare class SessionEngine {
         expiresAt: any;
         totalVotes: number;
     }>;
-    submitVote(sessionId: string, playerId: string, questionId: string, chosenOptionId: number): Promise<void>;
+    submitVote(sessionId: string, playerId: string, questionId: string, chosenOptionId: number): Promise<{
+        accepted: boolean;
+        reason: string;
+    } | {
+        accepted: boolean;
+        reason?: undefined;
+    }>;
     private getLeaderboard;
     private enrichQuestionStats;
 }

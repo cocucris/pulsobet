@@ -491,13 +491,19 @@ export class SessionEngine {
     for (const losePred of losingPredictions) {
       await this.prisma.prediction.update({
         where: { id: losePred.id },
-        data: { status: 'MISSED', pointsEarned: 0 },
+        data: { status: 'MISSED', pointsEarned: -pointsToAward },
       });
 
+      // Regla de negocio: el fallo resta puntos y el saldo puede quedar negativo
       await this.prisma.player.update({
         where: { id: losePred.playerId },
-        data: { streakCount: 0 },
+        data: {
+          totalPoints: { decrement: pointsToAward },
+          streakCount: 0,
+        },
       });
+
+      await this.redisService.incrementPlayerScore(targetSessionId, losePred.playerId, -pointsToAward);
     }
 
     await this.sessionCache.clearCurrentTrivia(targetSessionId);
@@ -558,15 +564,28 @@ export class SessionEngine {
   // ─── COMANDOS DE VOTO Y JUGADOR ──────────────────────────────────────
 
   async submitVote(sessionId: string, playerId: string, questionId: string, chosenOptionId: number) {
+    const question = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
+
+    if (!question) {
+      return { accepted: false, reason: 'La trivia ya no está disponible.' };
+    }
+    if (question.isClosed || question.correctOptionId !== null) {
+      return { accepted: false, reason: 'Esta trivia ya fue cerrada.' };
+    }
+    if (question.expiresAt && question.expiresAt.getTime() < Date.now()) {
+      return { accepted: false, reason: 'Se acabó el tiempo para votar.' };
+    }
+
     const existing = await this.prisma.prediction.findFirst({
       where: { playerId, questionId },
     });
 
-    const optionNum = Number(chosenOptionId);
-
     if (existing) {
-      return; // El jugador ya votó, ignoramos silenciosamente para evitar sobrecarga o manipulación.
+      // El jugador ya votó: lo tratamos como aceptado (idempotente) para que la UI quede consistente
+      return { accepted: true };
     }
+
+    const optionNum = Number(chosenOptionId);
 
     await this.prisma.prediction.create({
       data: {
@@ -577,25 +596,24 @@ export class SessionEngine {
       },
     });
 
-    const question = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
-    if (question) {
-      const enriched = await this.enrichQuestionStats(question);
-      await this.sessionCache.setCurrentTrivia(sessionId, enriched);
+    const enriched = await this.enrichQuestionStats(question);
+    await this.sessionCache.setCurrentTrivia(sessionId, enriched);
 
-      await this.sessionCache.incrementVersion(sessionId);
-      const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+    await this.sessionCache.incrementVersion(sessionId);
+    const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
-      this.eventEmitter.emit(
-        'player.voted',
-        new PlayerVotedEvent(
-          sessionId,
-          questionId,
-          enriched.options,
-          enriched.totalVotes,
-          eventNumber,
-        ),
-      );
-    }
+    this.eventEmitter.emit(
+      'player.voted',
+      new PlayerVotedEvent(
+        sessionId,
+        questionId,
+        enriched.options,
+        enriched.totalVotes,
+        eventNumber,
+      ),
+    );
+
+    return { accepted: true };
   }
 
   // ─── HELPER MÉTODOS ──────────────────────────────────────────────────

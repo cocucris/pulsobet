@@ -375,12 +375,16 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         for (const losePred of losingPredictions) {
             await this.prisma.prediction.update({
                 where: { id: losePred.id },
-                data: { status: 'MISSED', pointsEarned: 0 },
+                data: { status: 'MISSED', pointsEarned: -pointsToAward },
             });
             await this.prisma.player.update({
                 where: { id: losePred.playerId },
-                data: { streakCount: 0 },
+                data: {
+                    totalPoints: { decrement: pointsToAward },
+                    streakCount: 0,
+                },
             });
+            await this.redisService.incrementPlayerScore(targetSessionId, losePred.playerId, -pointsToAward);
         }
         await this.sessionCache.clearCurrentTrivia(targetSessionId);
         await this.sessionCache.incrementVersion(targetSessionId);
@@ -414,13 +418,23 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         return enriched;
     }
     async submitVote(sessionId, playerId, questionId, chosenOptionId) {
+        const question = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
+        if (!question) {
+            return { accepted: false, reason: 'La trivia ya no está disponible.' };
+        }
+        if (question.isClosed || question.correctOptionId !== null) {
+            return { accepted: false, reason: 'Esta trivia ya fue cerrada.' };
+        }
+        if (question.expiresAt && question.expiresAt.getTime() < Date.now()) {
+            return { accepted: false, reason: 'Se acabó el tiempo para votar.' };
+        }
         const existing = await this.prisma.prediction.findFirst({
             where: { playerId, questionId },
         });
-        const optionNum = Number(chosenOptionId);
         if (existing) {
-            return;
+            return { accepted: true };
         }
+        const optionNum = Number(chosenOptionId);
         await this.prisma.prediction.create({
             data: {
                 playerId,
@@ -429,14 +443,12 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 status: 'PENDING',
             },
         });
-        const question = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
-        if (question) {
-            const enriched = await this.enrichQuestionStats(question);
-            await this.sessionCache.setCurrentTrivia(sessionId, enriched);
-            await this.sessionCache.incrementVersion(sessionId);
-            const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
-            this.eventEmitter.emit('player.voted', new session_events_1.PlayerVotedEvent(sessionId, questionId, enriched.options, enriched.totalVotes, eventNumber));
-        }
+        const enriched = await this.enrichQuestionStats(question);
+        await this.sessionCache.setCurrentTrivia(sessionId, enriched);
+        await this.sessionCache.incrementVersion(sessionId);
+        const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+        this.eventEmitter.emit('player.voted', new session_events_1.PlayerVotedEvent(sessionId, questionId, enriched.options, enriched.totalVotes, eventNumber));
+        return { accepted: true };
     }
     async getLeaderboard(sessionId) {
         const topPlayers = await this.prisma.player.findMany({

@@ -41,7 +41,16 @@ export declare class LiveGateway implements OnGatewayConnection, OnGatewayDiscon
         chosenOptionId: number;
     }): Promise<{
         status: string;
+        playerId?: undefined;
+        reason?: undefined;
+    } | {
+        status: string;
         playerId: any;
+        reason?: undefined;
+    } | {
+        status: string;
+        reason: string | undefined;
+        playerId?: undefined;
     }>;
     sendLeaderboardUpdate(sessionId: string, topPlayers: any[]): void;
     sendMatchUpdate(sessionId: string, matchData: any): void;
