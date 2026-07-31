@@ -192,11 +192,8 @@ export class SessionEngine {
   // ─── COMANDOS DE PARTIDO ─────────────────────────────────────────────
 
   async startMatch(sessionId: string, homeTeam: string, awayTeam: string, status: 'SCHEDULED' | 'LIVE' = 'SCHEDULED') {
-    let session = await this.prisma.gameSession.findUnique({ where: { id: sessionId } });
-    if (!session) {
-      session = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
-    }
-    if (!session) throw new BadRequestException('No existe sesión activa');
+    // ensureSession resuelve barId/slug/sessionId a la sesión activa real (con fallback)
+    const session = await this.ensureSession(sessionId);
 
     const match = await this.prisma.match.create({
       data: {
@@ -232,15 +229,12 @@ export class SessionEngine {
       new MatchStartedEvent(session.id, matchPayload, eventNumber),
     );
 
-    return matchPayload;
+    // Devolvemos también el sessionId real para que el admin pueda alinear su sala de socket
+    return { ...matchPayload, sessionId: session.id };
   }
 
   async resetMatch(sessionId: string) {
-    let session = await this.prisma.gameSession.findUnique({ where: { id: sessionId } });
-    if (!session) {
-      session = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
-    }
-    if (!session) throw new BadRequestException('No existe sesión activa');
+    const session = await this.ensureSession(sessionId);
 
     await this.prisma.gameSession.update({
       where: { id: session.id },
@@ -283,8 +277,6 @@ export class SessionEngine {
       where: { matchId: match.id, isActive: true },
     });
 
-    const sessionId = session ? session.id : 'session-demo-01';
-
     const matchPayload = {
       id: match.id,
       homeTeam: match.homeTeam,
@@ -294,6 +286,20 @@ export class SessionEngine {
       status: match.status,
       currentMinute: match.currentMinute,
     };
+
+    // Sin fallback hardcodeado: si no hay sesión activa con este partido, degradamos
+    // a cualquier sesión activa real para que el broadcast llegue a las pantallas
+    let sessionId: string;
+    if (session) {
+      sessionId = session.id;
+    } else {
+      const anyActive = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
+      if (!anyActive) {
+        this.logger.warn(`updateScore: partido ${matchId} actualizado sin sesión activa asociada`);
+        return matchPayload;
+      }
+      sessionId = anyActive.id;
+    }
 
     await this.sessionCache.setMatch(sessionId, matchPayload);
     await this.sessionCache.incrementVersion(sessionId);

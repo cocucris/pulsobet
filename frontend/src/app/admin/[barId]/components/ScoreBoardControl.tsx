@@ -29,11 +29,22 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
         }),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        alert('Error al publicar el partido.');
+        alert(`Error al publicar el partido: ${data?.message || `HTTP ${res.status}`}`);
+        return;
+      }
+
+      // Actualización optimista: no depender solo del evento socket MATCH_STARTED
+      if (data) {
+        const { sessionId: _ignored, ...matchData } = data;
+        void _ignored;
+        useSessionStore.getState().applyEvent('MATCH_STARTED', matchData);
       }
     } catch (e) {
       console.error('Error iniciando partido:', e);
+      alert('Error de red al publicar el partido. Verificá la conexión con el servidor.');
     } finally {
       setIsStartingMatch(false);
     }
@@ -43,10 +54,11 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
     if (!match) return;
     const newHome = side === 'home' ? Math.max(0, match.scoreHome + delta) : match.scoreHome;
     const newAway = side === 'away' ? Math.max(0, match.scoreAway + delta) : match.scoreAway;
+    const statusToSend = newStatus || match.status;
 
     try {
       setIsUpdatingScore(true);
-      await fetch(`${API_URL}/match/score`, {
+      const res = await fetch(`${API_URL}/match/score`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -56,11 +68,24 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
           homeTeam: match.homeTeam,
           awayTeam: match.awayTeam,
           currentMinute: match.currentMinute,
-          status: newStatus || match.status,
+          status: statusToSend,
         }),
       });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        alert(`Error al actualizar el marcador: ${data?.message || `HTTP ${res.status}`}`);
+        return;
+      }
+
+      // Actualización optimista: reflejar el cambio aunque el evento socket no llegue
+      if (data) {
+        useSessionStore.getState().applyEvent('MATCH_SCORE_UPDATED', data);
+      }
     } catch (e) {
       console.error('Error actualizando marcador:', e);
+      alert('Error de red al actualizar el marcador. Verificá la conexión con el servidor.');
     } finally {
       setIsUpdatingScore(false);
     }
@@ -69,13 +94,24 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
   const handleResetMatch = async () => {
     try {
       setIsUpdatingScore(true);
-      await fetch(`${API_URL}/session/reset-match`, {
+      const res = await fetch(`${API_URL}/session/reset-match`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        alert(`Error al limpiar las pantallas: ${data?.message || `HTTP ${res.status}`}`);
+        return;
+      }
+
+      // Actualización optimista: limpiar el marcador local sin esperar el socket
+      useSessionStore.getState().applyEvent('MATCH_FINISHED', null);
     } catch (e) {
       console.error('Error reseteando partido:', e);
+      alert('Error de red al limpiar las pantallas. Verificá la conexión con el servidor.');
     } finally {
       setIsUpdatingScore(false);
     }

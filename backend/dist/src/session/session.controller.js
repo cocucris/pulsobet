@@ -26,6 +26,9 @@ let SessionController = class SessionController {
     async startMatch(body) {
         return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam, body.status || 'SCHEDULED');
     }
+    async resetMatch(body) {
+        return this.sessionEngine.resetMatch(body.sessionId);
+    }
 };
 exports.SessionController = SessionController;
 __decorate([
@@ -43,6 +46,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], SessionController.prototype, "startMatch", null);
+__decorate([
+    (0, common_1.Post)('reset-match'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SessionController.prototype, "resetMatch", null);
 exports.SessionController = SessionController = __decorate([
     (0, common_1.Controller)('session'),
     __metadata("design:paramtypes", [session_engine_1.SessionEngine])

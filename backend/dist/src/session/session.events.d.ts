@@ -4,8 +4,9 @@ export declare class MatchScoreUpdatedEvent {
     readonly scoreAway: number;
     readonly homeTeam: string;
     readonly awayTeam: string;
+    readonly status: string;
     readonly eventNumber: number;
-    constructor(sessionId: string, scoreHome: number, scoreAway: number, homeTeam: string, awayTeam: string, eventNumber: number);
+    constructor(sessionId: string, scoreHome: number, scoreAway: number, homeTeam: string, awayTeam: string, status: string, eventNumber: number);
 }
 export declare class TriviaCreatedEvent {
     readonly sessionId: string;

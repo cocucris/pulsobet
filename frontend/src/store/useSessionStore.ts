@@ -88,8 +88,10 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   applyEvent: (event, payload) => {
     const { snapshot, lastEventNumber } = get();
 
-    // Sequence number check: ignore old/duplicate events
-    if (payload?.eventNumber && payload.eventNumber <= lastEventNumber) {
+    // Sequence number check: ignore old/duplicate events.
+    // OJO: si Redis está caído, el backend emite siempre eventNumber=1; en ese caso
+    // no descartamos (lastEventNumber <= 1) para no congelar la pantalla.
+    if (payload?.eventNumber && payload.eventNumber <= lastEventNumber && lastEventNumber > 1) {
       return;
     }
 
@@ -160,11 +162,21 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     switch (event) {
       case 'MATCH_SCORE_UPDATED':
       case 'MATCH_STARTED':
-      case 'MATCH_FINISHED':
         set({
           snapshot: {
             ...snapshot,
             match: { ...snapshot.match, ...payload },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
+      case 'MATCH_FINISHED':
+        // Payload null (reset de pantallas) debe limpiar el marcador, no hacer spread
+        set({
+          snapshot: {
+            ...snapshot,
+            match: payload ? { ...snapshot.match, ...payload } : null,
           },
           lastEventNumber: nextEventNumber,
         });

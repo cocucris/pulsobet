@@ -76,8 +76,8 @@ async function main() {
             homeTeam: 'Olimpia',
             awayTeam: 'Cerro Porteño',
             startTime: new Date(),
-            status: client_1.MatchStatus.LIVE,
-            scoreHome: 1,
+            status: client_1.MatchStatus.SCHEDULED,
+            scoreHome: 0,
             scoreAway: 0,
         },
     });

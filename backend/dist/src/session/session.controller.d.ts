@@ -9,6 +9,7 @@ export declare class SessionController {
         awayTeam: string;
         status?: 'SCHEDULED' | 'LIVE';
     }): Promise<{
+        sessionId: string;
         id: string;
         homeTeam: string;
         awayTeam: string;
@@ -16,5 +17,11 @@ export declare class SessionController {
         scoreAway: number;
         status: import("@prisma/client").$Enums.MatchStatus;
         currentMinute: number;
+    }>;
+    resetMatch(body: {
+        sessionId: string;
+    }): Promise<{
+        status: string;
+        message: string;
     }>;
 }

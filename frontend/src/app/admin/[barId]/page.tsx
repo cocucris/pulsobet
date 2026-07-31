@@ -15,9 +15,11 @@ export default function AdminBarPage() {
   const barId = params.barId as string;
 
   const [refreshAnalyticsKey, setRefreshAnalyticsKey] = useState(0);
+  // Sala de socket alineada con la sesión real que resuelve el backend
+  const [socketSessionId, setSocketSessionId] = useState(barId);
 
   // Conectar el admin a WebSockets (isAdmin = true)
-  useSocket(barId, false, true);
+  useSocket(socketSessionId, false, true);
 
   const isConnected = useSessionStore((s) => s.isConnected);
 
@@ -28,6 +30,12 @@ export default function AdminBarPage() {
       .then((data) => {
         if (data) {
           useSessionStore.getState().applySnapshot(data);
+          // El backend resuelve barId/slug a la GameSession real; si difiere del
+          // parámetro de la URL, reconectamos el socket a la sala correcta para
+          // recibir MATCH_STARTED / MATCH_SCORE_UPDATED en vivo.
+          if (data.sessionId && data.sessionId !== barId) {
+            setSocketSessionId(data.sessionId);
+          }
         }
       })
       .catch((e) => console.error('Error al cargar snapshot inicial:', e));
@@ -57,7 +65,7 @@ export default function AdminBarPage() {
       </div>
 
       <div className="max-w-5xl mx-auto mt-8">
-        <ScoreBoardControl sessionId={barId} />
+        <ScoreBoardControl sessionId={socketSessionId} />
       </div>
 
       <div className="max-w-5xl mx-auto mt-8">

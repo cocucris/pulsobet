@@ -7,13 +7,15 @@ class MatchScoreUpdatedEvent {
     scoreAway;
     homeTeam;
     awayTeam;
+    status;
     eventNumber;
-    constructor(sessionId, scoreHome, scoreAway, homeTeam, awayTeam, eventNumber) {
+    constructor(sessionId, scoreHome, scoreAway, homeTeam, awayTeam, status, eventNumber) {
         this.sessionId = sessionId;
         this.scoreHome = scoreHome;
         this.scoreAway = scoreAway;
         this.homeTeam = homeTeam;
         this.awayTeam = awayTeam;
+        this.status = status;
         this.eventNumber = eventNumber;
     }
 }

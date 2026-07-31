@@ -29,6 +29,7 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
                 scoreAway: event.scoreAway,
                 homeTeam: event.homeTeam,
                 awayTeam: event.awayTeam,
+                status: event.status,
                 eventNumber: event.eventNumber,
             });
         }
@@ -40,7 +41,7 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
         try {
             this.logger.log(`[Dispatcher] Broadcast MATCH_STARTED a sesión ${event.sessionId}`);
             this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_STARTED', {
-                match: event.match,
+                ...event.match,
                 eventNumber: event.eventNumber,
             });
         }
@@ -52,7 +53,7 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
         try {
             this.logger.log(`[Dispatcher] Broadcast MATCH_FINISHED a sesión ${event.sessionId}`);
             this.liveGateway.broadcastToSession(event.sessionId, 'MATCH_FINISHED', {
-                match: event.match,
+                ...event.match,
                 eventNumber: event.eventNumber,
             });
         }

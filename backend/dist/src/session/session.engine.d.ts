@@ -30,6 +30,7 @@ export declare class SessionEngine {
     }>;
     buildSnapshot(sessionId: string, playerId?: string): Promise<SessionSnapshot>;
     startMatch(sessionId: string, homeTeam: string, awayTeam: string, status?: 'SCHEDULED' | 'LIVE'): Promise<{
+        sessionId: string;
         id: string;
         homeTeam: string;
         awayTeam: string;
@@ -37,6 +38,10 @@ export declare class SessionEngine {
         scoreAway: number;
         status: import("@prisma/client").$Enums.MatchStatus;
         currentMinute: number;
+    }>;
+    resetMatch(sessionId: string): Promise<{
+        status: string;
+        message: string;
     }>;
     updateScore(matchId: string, scoreHome: number, scoreAway: number, homeTeam?: string, awayTeam?: string, currentMinute?: number, status?: 'SCHEDULED' | 'LIVE' | 'FINISHED'): Promise<{
         id: string;

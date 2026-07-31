@@ -95,24 +95,6 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 await this.sessionCache.setMatch(actualSessionId, matchData);
             }
         }
-        if (!matchData) {
-            const liveMatch = await this.prisma.match.findFirst({
-                where: { status: 'LIVE' },
-                orderBy: { startTime: 'desc' },
-            });
-            if (liveMatch) {
-                matchData = {
-                    id: liveMatch.id,
-                    homeTeam: liveMatch.homeTeam,
-                    awayTeam: liveMatch.awayTeam,
-                    scoreHome: liveMatch.scoreHome,
-                    scoreAway: liveMatch.scoreAway,
-                    status: liveMatch.status,
-                    currentMinute: liveMatch.currentMinute,
-                };
-                await this.sessionCache.setMatch(actualSessionId, matchData);
-            }
-        }
         let currentTrivia = await this.sessionCache.getCurrentTrivia(actualSessionId);
         if (!currentTrivia) {
             const activeQuestion = await this.prisma.liveQuestion.findFirst({
@@ -183,12 +165,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         };
     }
     async startMatch(sessionId, homeTeam, awayTeam, status = 'SCHEDULED') {
-        let session = await this.prisma.gameSession.findUnique({ where: { id: sessionId } });
-        if (!session) {
-            session = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
-        }
-        if (!session)
-            throw new common_1.BadRequestException('No existe sesión activa');
+        const session = await this.ensureSession(sessionId);
         const match = await this.prisma.match.create({
             data: {
                 apiFootballId: Math.floor(1000 + Math.random() * 9000),
@@ -215,7 +192,19 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         await this.sessionCache.incrementVersion(session.id);
         const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
         this.eventEmitter.emit('match.started', new session_events_1.MatchStartedEvent(session.id, matchPayload, eventNumber));
-        return matchPayload;
+        return { ...matchPayload, sessionId: session.id };
+    }
+    async resetMatch(sessionId) {
+        const session = await this.ensureSession(sessionId);
+        await this.prisma.gameSession.update({
+            where: { id: session.id },
+            data: { matchId: null },
+        });
+        await this.sessionCache.setMatch(session.id, null);
+        await this.sessionCache.incrementVersion(session.id);
+        const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+        this.eventEmitter.emit('match.finished', new session_events_1.MatchFinishedEvent(session.id, null, eventNumber));
+        return { status: 'success', message: 'Partido reseteado' };
     }
     async updateScore(matchId, scoreHome, scoreAway, homeTeam, awayTeam, currentMinute, status) {
         const dataToUpdate = { scoreHome, scoreAway };
@@ -234,7 +223,6 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         const session = await this.prisma.gameSession.findFirst({
             where: { matchId: match.id, isActive: true },
         });
-        const sessionId = session ? session.id : 'session-demo-01';
         const matchPayload = {
             id: match.id,
             homeTeam: match.homeTeam,
@@ -244,10 +232,22 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             status: match.status,
             currentMinute: match.currentMinute,
         };
+        let sessionId;
+        if (session) {
+            sessionId = session.id;
+        }
+        else {
+            const anyActive = await this.prisma.gameSession.findFirst({ where: { isActive: true } });
+            if (!anyActive) {
+                this.logger.warn(`updateScore: partido ${matchId} actualizado sin sesión activa asociada`);
+                return matchPayload;
+            }
+            sessionId = anyActive.id;
+        }
         await this.sessionCache.setMatch(sessionId, matchPayload);
         await this.sessionCache.incrementVersion(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
-        this.eventEmitter.emit('match.score.updated', new session_events_1.MatchScoreUpdatedEvent(sessionId, match.scoreHome, match.scoreAway, match.homeTeam, match.awayTeam, eventNumber));
+        this.eventEmitter.emit('match.score.updated', new session_events_1.MatchScoreUpdatedEvent(sessionId, match.scoreHome, match.scoreAway, match.homeTeam, match.awayTeam, match.status, eventNumber));
         return matchPayload;
     }
     async createManualQuestion(dto) {
@@ -419,21 +419,16 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         });
         const optionNum = Number(chosenOptionId);
         if (existing) {
-            await this.prisma.prediction.update({
-                where: { id: existing.id },
-                data: { chosenOptionId: optionNum },
-            });
+            return;
         }
-        else {
-            await this.prisma.prediction.create({
-                data: {
-                    playerId,
-                    questionId,
-                    chosenOptionId: optionNum,
-                    status: 'PENDING',
-                },
-            });
-        }
+        await this.prisma.prediction.create({
+            data: {
+                playerId,
+                questionId,
+                chosenOptionId: optionNum,
+                status: 'PENDING',
+            },
+        });
         const question = await this.prisma.liveQuestion.findUnique({ where: { id: questionId } });
         if (question) {
             const enriched = await this.enrichQuestionStats(question);
