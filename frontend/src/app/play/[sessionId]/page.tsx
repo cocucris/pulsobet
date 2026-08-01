@@ -124,6 +124,8 @@ export default function PlayPage() {
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
   const [selectedTriviaIndex, setSelectedTriviaIndex] = useState(0);
   const [voteError, setVoteError] = useState<string | null>(null);
+  // Pestaña principal de la zona de trivias: jugar vs historial de resultados
+  const [triviaTab, setTriviaTab] = useState<'play' | 'results'>('play');
 
   // Hook WebSockets
   const { sendPrediction, reconnectWithToken } = useSocket(sessionId, false, false);
@@ -373,9 +375,61 @@ export default function PlayPage() {
         )}
       </section>
 
-      {/* Contenido Dinámico: Trivias Activas (Múltiples) o Estado de Espera */}
+      {/* Contenido Dinámico: Trivias (pestañas Jugar / Resultados) */}
       <div className="w-full my-2 flex flex-col items-center justify-center">
-        {allActiveQuestions.length > 0 && currentTrivia ? (
+        {/* Toggle principal: Jugar vs Resultados */}
+        {(allActiveQuestions.length > 0 || (snapshot?.resolvedTrivias || []).length > 0) && (
+          <div className="w-full flex bg-slate-900 p-1 rounded-2xl border border-slate-800 mb-3">
+            <button
+              type="button"
+              onClick={() => setTriviaTab('play')}
+              className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                triviaTab === 'play' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🎮 Jugar {allActiveQuestions.length > 0 ? `(${allActiveQuestions.length})` : ''}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTriviaTab('results')}
+              className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                triviaTab === 'results' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              📋 Resultados {(snapshot?.resolvedTrivias || []).length > 0 ? `(${(snapshot?.resolvedTrivias || []).length})` : ''}
+            </button>
+          </div>
+        )}
+
+        {triviaTab === 'results' ? (
+          /* 📋 PESTAÑA RESULTADOS: historial compacto de la noche */
+          <div className="w-full flex flex-col gap-2">
+            {(snapshot?.resolvedTrivias || []).length > 0 ? (
+              snapshot!.resolvedTrivias.map((trivia) => {
+                const iVoted = answeredQuestionIds.includes(trivia.id) || !!snapshot?.myPlayer?.votedTriviaIds?.includes(trivia.id);
+                const winnerOpt = trivia.options.find((o) => Number(o.id) === Number(trivia.correctOptionId));
+                return (
+                  <div key={trivia.id} className="p-3 rounded-xl border bg-slate-900/60 border-slate-800">
+                    <p className="text-xs font-bold text-slate-300 mb-1.5">{trivia.questionText}</p>
+                    <div className="flex justify-between items-center text-[11px] font-mono">
+                      <span className="text-emerald-400 font-black">✅ {winnerOpt?.text || '—'}</span>
+                      <span className="text-slate-500">{trivia.totalVotes || 0} votos</span>
+                    </div>
+                    {iVoted && (
+                      <p className="text-[10px] font-bold text-slate-500 mt-1">
+                        Ya votaste en esta trivia · mirá tus puntos arriba ☝️
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center p-4 bg-slate-900/40 border border-slate-800/80 rounded-2xl w-full">
+                <p className="text-xs font-bold text-slate-400">Todavía no hay resultados esta noche.</p>
+              </div>
+            )}
+          </div>
+        ) : allActiveQuestions.length > 0 && currentTrivia ? (
           <div className="w-full p-5 bg-slate-900 rounded-2xl shadow-2xl border border-amber-500/40 animate-fade-in">
             {/* Selector de Pestañas si hay más de 1 trivia activa */}
             {allActiveQuestions.length > 1 && (
@@ -470,35 +524,6 @@ export default function PlayPage() {
             </div>
           )}
         </div>
-      )}
-
-      {/* 📋 Resultados de Trivias Resueltas (historial de la sesión) */}
-      {(snapshot?.resolvedTrivias || []).length > 0 && (
-        <section className="w-full my-3">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
-            📋 Resultados ({snapshot!.resolvedTrivias.length})
-          </h3>
-          <div className="flex flex-col gap-2">
-            {snapshot!.resolvedTrivias.map((trivia) => {
-              const iVoted = answeredQuestionIds.includes(trivia.id) || !!snapshot?.myPlayer?.votedTriviaIds?.includes(trivia.id);
-              const winnerOpt = trivia.options.find((o) => Number(o.id) === Number(trivia.correctOptionId));
-              return (
-                <div key={trivia.id} className="p-3 rounded-xl border bg-slate-900/60 border-slate-800">
-                  <p className="text-xs font-bold text-slate-300 mb-1.5">{trivia.questionText}</p>
-                  <div className="flex justify-between items-center text-[11px] font-mono">
-                    <span className="text-emerald-400 font-black">✅ {winnerOpt?.text || '—'}</span>
-                    <span className="text-slate-500">{trivia.totalVotes || 0} votos</span>
-                  </div>
-                  {iVoted && (
-                    <p className="text-[10px] font-bold text-slate-500 mt-1">
-                      Ya votaste en esta trivia · mirá tus puntos arriba ☝️
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
       )}
 
       {/* Mis Códigos de Canje Activos (Vouchers) */}
