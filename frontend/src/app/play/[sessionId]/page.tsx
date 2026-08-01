@@ -430,6 +430,35 @@ export default function PlayPage() {
         </div>
       )}
 
+      {/* 📋 Resultados de Trivias Resueltas (historial de la sesión) */}
+      {(snapshot?.resolvedTrivias || []).length > 0 && (
+        <section className="w-full my-3">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            📋 Resultados ({snapshot!.resolvedTrivias.length})
+          </h3>
+          <div className="flex flex-col gap-2">
+            {snapshot!.resolvedTrivias.map((trivia) => {
+              const iVoted = answeredQuestionIds.includes(trivia.id) || !!snapshot?.myPlayer?.votedTriviaIds?.includes(trivia.id);
+              const winnerOpt = trivia.options.find((o) => Number(o.id) === Number(trivia.correctOptionId));
+              return (
+                <div key={trivia.id} className="p-3 rounded-xl border bg-slate-900/60 border-slate-800">
+                  <p className="text-xs font-bold text-slate-300 mb-1.5">{trivia.questionText}</p>
+                  <div className="flex justify-between items-center text-[11px] font-mono">
+                    <span className="text-emerald-400 font-black">✅ {winnerOpt?.text || '—'}</span>
+                    <span className="text-slate-500">{trivia.totalVotes || 0} votos</span>
+                  </div>
+                  {iVoted && (
+                    <p className="text-[10px] font-bold text-slate-500 mt-1">
+                      Ya votaste en esta trivia · mirá tus puntos arriba ☝️
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Mis Códigos de Canje Activos (Vouchers) */}
       {claims.length > 0 && (
         <section className="w-full my-3">

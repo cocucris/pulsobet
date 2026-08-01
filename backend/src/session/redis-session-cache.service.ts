@@ -146,6 +146,30 @@ export class RedisSessionCacheService {
     }
   }
 
+  // Historial de trivias resueltas de la sesión (persiste hasta cerrar la sesión)
+  async getResolvedTrivias(sessionId: string): Promise<any[]> {
+    try {
+      if (!this.client) return [];
+      const data = await this.client.get(`session:${sessionId}:trivias_resolved`);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async addResolvedTrivia(sessionId: string, trivia: any): Promise<void> {
+    try {
+      if (!this.client) return;
+      const resolved = await this.getResolvedTrivias(sessionId);
+      const idx = resolved.findIndex((t) => t.id === trivia.id);
+      if (idx >= 0) resolved[idx] = trivia;
+      else resolved.push(trivia);
+      await this.client.set(`session:${sessionId}:trivias_resolved`, JSON.stringify(resolved));
+    } catch (e) {
+      this.logger.warn(`Redis fallback on addResolvedTrivia: ${e.message}`);
+    }
+  }
+
   // Rewards cache
   async setRewards(barId: string, rewards: any[]): Promise<void> {
     try {

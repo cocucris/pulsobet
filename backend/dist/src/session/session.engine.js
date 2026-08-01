@@ -106,6 +106,26 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
             }
         }
+        let resolvedTrivias = await this.sessionCache.getResolvedTrivias(actualSessionId);
+        if (resolvedTrivias.length === 0) {
+            const resolvedQuestions = await this.prisma.liveQuestion.findMany({
+                where: { correctOptionId: { not: null } },
+                orderBy: { expiresAt: 'asc' },
+                take: 20,
+            });
+            if (resolvedQuestions.length > 0) {
+                resolvedTrivias = await Promise.all(resolvedQuestions.map(async (q) => {
+                    const enriched = await this.enrichQuestionStats(q);
+                    const winnersCount = await this.prisma.prediction.count({
+                        where: { questionId: q.id, status: 'HIT' },
+                    });
+                    return { ...enriched, correctOptionId: q.correctOptionId, winnersCount };
+                }));
+                for (const t of resolvedTrivias) {
+                    await this.sessionCache.addResolvedTrivia(actualSessionId, t);
+                }
+            }
+        }
         const topPlayersRaw = await this.prisma.player.findMany({
             where: { sessionId: actualSessionId },
             orderBy: { totalPoints: 'desc' },
@@ -154,6 +174,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             serverTime: new Date().toISOString(),
             match: matchData,
             activeTrivias,
+            resolvedTrivias,
             leaderboardTop10,
             myPlayer,
             connectedPlayersCount,
@@ -396,10 +417,16 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             await this.redisService.incrementPlayerScore(targetSessionId, losePred.playerId, -pointsToAward);
         }
         await this.sessionCache.removeActiveTrivia(targetSessionId, questionId);
+        const resolvedTrivia = {
+            ...(await this.enrichQuestionStats(question)),
+            correctOptionId,
+            winnersCount: winningPredictions.length,
+        };
+        await this.sessionCache.addResolvedTrivia(targetSessionId, resolvedTrivia);
         await this.sessionCache.incrementVersion(targetSessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(targetSessionId);
         const topPlayers = await this.getLeaderboard(targetSessionId);
-        this.eventEmitter.emit('trivia.result', new session_events_1.TriviaResultEvent(targetSessionId, questionId, correctOptionId, winningPredictions.length, topPlayers, eventNumber));
+        this.eventEmitter.emit('trivia.result', new session_events_1.TriviaResultEvent(targetSessionId, questionId, correctOptionId, winningPredictions.length, topPlayers, eventNumber, resolvedTrivia));
         return {
             status: 'resolved',
             winnersCount: winningPredictions.length,

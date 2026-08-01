@@ -26,6 +26,19 @@ export interface SessionSnapshot {
     imageUrl?: string | null;
   }[];
 
+  resolvedTrivias: {
+    id: string;
+    questionText: string;
+    options: { id: number; text: string; count: number; percentage: number }[];
+    pointsReward: number;
+    isFlash: boolean;
+    expiresAt: string;
+    totalVotes: number;
+    imageUrl?: string | null;
+    correctOptionId: number;
+    winnersCount: number;
+  }[];
+
   leaderboardTop10: {
     rank: number;
     id: string;

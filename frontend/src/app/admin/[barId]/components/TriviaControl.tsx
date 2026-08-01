@@ -14,6 +14,7 @@ const PRESET_IMAGES = [
 
 export function TriviaControl({ barId }: { barId: string }) {
   const activeTrivias = useSessionStore((s) => s.snapshot?.activeTrivias) || [];
+  const resolvedTrivias = useSessionStore((s) => s.snapshot?.resolvedTrivias) || [];
 
   const [questionText, setQuestionText] = useState('');
   const [pointsReward, setPointsReward] = useState(150);
@@ -330,6 +331,46 @@ export function TriviaControl({ barId }: { barId: string }) {
                   </div>
                 </>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Historial de Trivias Resueltas (persiste hasta cerrar la sesión) */}
+      {resolvedTrivias.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-slate-700 flex flex-col gap-3">
+          <span className="text-xs font-black uppercase text-slate-400 tracking-wider block">
+            📋 Historial de Resultados ({resolvedTrivias.length})
+          </span>
+          {resolvedTrivias.map((trivia) => (
+            <div key={trivia.id} className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-slate-400">
+                  {trivia.isFlash ? '⚡ FLASH • ' : ''}+{trivia.pointsReward || 150} PTS • {trivia.totalVotes || 0} VOTOS • 🏆 {trivia.winnersCount ?? 0} ACIERTOS
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  RESUELTA
+                </span>
+              </div>
+              <p className="text-sm font-bold text-slate-300 mb-2">{trivia.questionText}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {trivia.options.map((opt) => {
+                  const isWinner = Number(opt.id) === Number(trivia.correctOptionId);
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
+                        isWinner
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                          : 'bg-slate-800/60 text-slate-500 border-slate-700/60'
+                      }`}
+                    >
+                      <span>{isWinner ? '✅ ' : ''}{opt.text}</span>
+                      <span className="font-mono">{opt.percentage || 0}%</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>

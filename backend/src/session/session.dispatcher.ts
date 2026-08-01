@@ -102,6 +102,7 @@ export class SocketDispatcher {
         correctOptionId: event.correctOptionId,
         winnersCount: event.winnersCount,
         leaderboard: event.leaderboard,
+        trivia: event.trivia,
         eventNumber: event.eventNumber,
       });
       this.liveGateway.broadcastToSession(event.sessionId, 'leaderboard_update', event.leaderboard);

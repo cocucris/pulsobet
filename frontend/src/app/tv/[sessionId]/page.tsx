@@ -47,6 +47,7 @@ export default function TvPage() {
   const displayMatch = snapshot?.match || null;
 
   const rawActiveQuestions = snapshot?.activeTrivias || [];
+  const resolvedTrivias = snapshot?.resolvedTrivias || [];
 
 
   // Separar Trivias Estándar vs Trivias Flash ⚡ Activas (con tiempo restante > 0)
@@ -330,6 +331,36 @@ export default function TvPage() {
             🍹 DISFRUTÁ EL PARTIDO · VIVÍ LA EXPERIENCIA
           </span>
         </div>
+
+        {/* 📋 HISTORIAL DE TRIVIAS RESUELTAS (resultados de la sesión) */}
+        {resolvedTrivias.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-slate-800">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+              📋 Resultados ({resolvedTrivias.length})
+            </p>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {resolvedTrivias.map((q: any) => {
+                const winnerOpt = Array.isArray(q.options)
+                  ? q.options.find((o: any) => Number(o.id) === Number(q.correctOptionId))
+                  : null;
+                return (
+                  <div
+                    key={q.id}
+                    className="min-w-[220px] bg-slate-900/70 border border-slate-800 rounded-xl p-2.5 flex flex-col gap-1"
+                  >
+                    <span className="text-[11px] font-bold text-slate-300 leading-tight line-clamp-2">
+                      {q.questionText}
+                    </span>
+                    <div className="flex justify-between items-center text-[10px] font-mono">
+                      <span className="text-emerald-400 font-black">✅ {winnerOpt?.text || '—'}</span>
+                      <span className="text-slate-500">{q.totalVotes || 0} votos</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ⚡ OVERLAY POPUP TRIVIA FLASH (Neon Glow Overlay Flotante Destacado) */}
         {flashQuestion && flashRemainingSeconds > 0 && (

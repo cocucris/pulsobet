@@ -42,6 +42,7 @@ export class TriviaResultEvent {
     public readonly winnersCount: number,
     public readonly leaderboard: any[],
     public readonly eventNumber: number,
+    public readonly trivia?: any,
   ) {}
 }
 

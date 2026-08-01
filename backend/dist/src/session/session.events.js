@@ -60,13 +60,15 @@ class TriviaResultEvent {
     winnersCount;
     leaderboard;
     eventNumber;
-    constructor(sessionId, triviaId, correctOptionId, winnersCount, leaderboard, eventNumber) {
+    trivia;
+    constructor(sessionId, triviaId, correctOptionId, winnersCount, leaderboard, eventNumber, trivia) {
         this.sessionId = sessionId;
         this.triviaId = triviaId;
         this.correctOptionId = correctOptionId;
         this.winnersCount = winnersCount;
         this.leaderboard = leaderboard;
         this.eventNumber = eventNumber;
+        this.trivia = trivia;
     }
 }
 exports.TriviaResultEvent = TriviaResultEvent;

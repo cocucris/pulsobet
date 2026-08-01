@@ -28,6 +28,19 @@ export interface SessionSnapshot {
     imageUrl?: string | null;
   }[];
 
+  resolvedTrivias: {
+    id: string;
+    questionText: string;
+    options: { id: number; text: string; count: number; percentage: number }[];
+    pointsReward: number;
+    isFlash: boolean;
+    expiresAt: string;
+    totalVotes: number;
+    imageUrl?: string | null;
+    correctOptionId: number;
+    winnersCount: number;
+  }[];
+
   leaderboardTop10: {
     rank: number;
     id: string;
@@ -223,18 +236,30 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         });
         break;
 
-      case 'TRIVIA_RESULT':
+      case 'TRIVIA_RESULT': {
+        // La trivia resuelta pasa al historial de la sesión (con resultado, votos y porcentajes)
+        const resolved = payload?.trivia
+          ? { ...payload.trivia, correctOptionId: payload.correctOptionId, winnersCount: payload.winnersCount }
+          : null;
+        const alreadyResolved = resolved
+          ? snapshot.resolvedTrivias.some((t) => t.id === resolved.id)
+          : false;
         set({
           snapshot: {
             ...snapshot,
             activeTrivias: payload?.triviaId
               ? snapshot.activeTrivias.filter((t) => t.id !== payload.triviaId)
               : snapshot.activeTrivias,
+            resolvedTrivias:
+              resolved && !alreadyResolved
+                ? [...snapshot.resolvedTrivias, resolved]
+                : snapshot.resolvedTrivias,
             leaderboardTop10: payload.leaderboard || snapshot.leaderboardTop10,
           },
           lastEventNumber: nextEventNumber,
         });
         break;
+      }
 
       case 'LEADERBOARD_UPDATED':
         set({

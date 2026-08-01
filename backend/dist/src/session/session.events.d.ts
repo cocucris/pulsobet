@@ -33,7 +33,8 @@ export declare class TriviaResultEvent {
     readonly winnersCount: number;
     readonly leaderboard: any[];
     readonly eventNumber: number;
-    constructor(sessionId: string, triviaId: string, correctOptionId: number, winnersCount: number, leaderboard: any[], eventNumber: number);
+    readonly trivia?: any | undefined;
+    constructor(sessionId: string, triviaId: string, correctOptionId: number, winnersCount: number, leaderboard: any[], eventNumber: number, trivia?: any | undefined);
 }
 export declare class PlayerJoinedEvent {
     readonly sessionId: string;

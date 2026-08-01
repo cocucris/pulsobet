@@ -122,6 +122,31 @@ export class SessionEngine {
       }
     }
 
+    // 2b. Historial de trivias resueltas de la sesión (resultados visibles hasta cerrar sesión)
+    let resolvedTrivias = await this.sessionCache.getResolvedTrivias(actualSessionId);
+    if (resolvedTrivias.length === 0) {
+      const resolvedQuestions = await this.prisma.liveQuestion.findMany({
+        where: { correctOptionId: { not: null } },
+        orderBy: { expiresAt: 'asc' },
+        take: 20,
+      });
+
+      if (resolvedQuestions.length > 0) {
+        resolvedTrivias = await Promise.all(
+          resolvedQuestions.map(async (q) => {
+            const enriched = await this.enrichQuestionStats(q);
+            const winnersCount = await this.prisma.prediction.count({
+              where: { questionId: q.id, status: 'HIT' },
+            });
+            return { ...enriched, correctOptionId: q.correctOptionId, winnersCount };
+          }),
+        );
+        for (const t of resolvedTrivias) {
+          await this.sessionCache.addResolvedTrivia(actualSessionId, t);
+        }
+      }
+    }
+
     // 3. Leaderboard Top 10
     const topPlayersRaw = await this.prisma.player.findMany({
       where: { sessionId: actualSessionId },
@@ -178,6 +203,7 @@ export class SessionEngine {
       serverTime: new Date().toISOString(),
       match: matchData,
       activeTrivias,
+      resolvedTrivias,
       leaderboardTop10,
       myPlayer,
       connectedPlayersCount,
@@ -520,6 +546,15 @@ export class SessionEngine {
     }
 
     await this.sessionCache.removeActiveTrivia(targetSessionId, questionId);
+
+    // Guardar en el historial de resueltas de la sesión (visible hasta cerrar la sesión)
+    const resolvedTrivia = {
+      ...(await this.enrichQuestionStats(question)),
+      correctOptionId,
+      winnersCount: winningPredictions.length,
+    };
+    await this.sessionCache.addResolvedTrivia(targetSessionId, resolvedTrivia);
+
     await this.sessionCache.incrementVersion(targetSessionId);
     const eventNumber = await this.sessionCache.incrementEventNumber(targetSessionId);
 
@@ -535,6 +570,7 @@ export class SessionEngine {
         winningPredictions.length,
         topPlayers,
         eventNumber,
+        resolvedTrivia,
       ),
     );
 
