@@ -26,4 +26,11 @@ export class SessionController {
   ) {
     return this.sessionEngine.resetMatch(body.sessionId);
   }
+
+  @Post('close')
+  async closeSession(
+    @Body() body: { sessionId: string },
+  ) {
+    return this.sessionEngine.closeAndResetSession(body.sessionId);
+  }
 }

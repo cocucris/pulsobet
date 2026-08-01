@@ -43,6 +43,11 @@ export declare class SessionEngine {
         status: string;
         message: string;
     }>;
+    closeAndResetSession(sessionId: string): Promise<{
+        status: string;
+        newSessionId: string;
+        archivedSessionId: string;
+    }>;
     updateScore(matchId: string, scoreHome: number, scoreAway: number, homeTeam?: string, awayTeam?: string, currentMinute?: number, status?: 'SCHEDULED' | 'LIVE' | 'FINISHED'): Promise<{
         id: string;
         homeTeam: string;

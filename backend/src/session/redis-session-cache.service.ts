@@ -170,6 +170,23 @@ export class RedisSessionCacheService {
     }
   }
 
+  // Limpieza total del estado efímero de una sesión (al cerrar la noche)
+  async resetSessionState(sessionId: string): Promise<void> {
+    try {
+      if (!this.client) return;
+      await this.client.del(
+        `session:${sessionId}:match`,
+        `session:${sessionId}:trivias`,
+        `session:${sessionId}:trivias_resolved`,
+        `session:${sessionId}:event_number`,
+        `session:${sessionId}:version`,
+        `session:${sessionId}:connected`,
+      );
+    } catch (e) {
+      this.logger.warn(`Redis fallback on resetSessionState: ${e.message}`);
+    }
+  }
+
   // Rewards cache
   async setRewards(barId: string, rewards: any[]): Promise<void> {
     try {

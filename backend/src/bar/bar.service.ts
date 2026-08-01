@@ -167,10 +167,12 @@ export class BarService {
   }
 
   /**
-   * Obtiene la información del jugador por nickname y sessionId (con fallback)
+   * Obtiene la información del jugador por nickname y sessionId.
+   * Sin fallback cross-sesión: tras un cierre de noche, el jugador de la sesión
+   * archivada NO debe heredar puntos ni canjes en la sesión nueva.
    */
   async getPlayerByNickname(sessionId: string, nickname: string) {
-    let player = await this.prisma.player.findFirst({
+    const player = await this.prisma.player.findFirst({
       where: { sessionId, nickname: { equals: nickname, mode: 'insensitive' } },
       include: {
         claims: {
@@ -179,18 +181,6 @@ export class BarService {
         },
       },
     });
-
-    if (!player) {
-      player = await this.prisma.player.findFirst({
-        where: { nickname: { equals: nickname, mode: 'insensitive' } },
-        include: {
-          claims: {
-            include: { reward: true },
-            orderBy: { createdAt: 'desc' },
-          },
-        },
-      });
-    }
 
     if (!player) {
       throw new NotFoundException('Jugador no encontrado.');

@@ -312,6 +312,24 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         });
         break;
 
+      case 'SESSION_RESET':
+        // Cierre de noche: todas las pantallas vuelven a cero conservando la identidad
+        set({
+          snapshot: snapshot
+            ? {
+                ...snapshot,
+                match: null,
+                activeTrivias: [],
+                resolvedTrivias: [],
+                leaderboardTop10: [],
+                myPlayer: null,
+                connectedPlayersCount: 0,
+              }
+            : snapshot,
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
       default:
         break;
     }

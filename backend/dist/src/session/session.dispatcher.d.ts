@@ -1,5 +1,5 @@
 import { LiveGateway } from '../live/live.gateway';
-import { MatchScoreUpdatedEvent, TriviaOpenedEvent, TriviaClosedEvent, TriviaResultEvent, PlayerJoinedEvent, PlayerVotedEvent, LeaderboardUpdatedEvent, RewardReservedEvent, RewardDeliveredEvent, MatchStartedEvent, MatchFinishedEvent } from './session.events';
+import { MatchScoreUpdatedEvent, TriviaOpenedEvent, TriviaClosedEvent, TriviaResultEvent, PlayerJoinedEvent, PlayerVotedEvent, LeaderboardUpdatedEvent, RewardReservedEvent, RewardDeliveredEvent, MatchStartedEvent, MatchFinishedEvent, SessionResetEvent } from './session.events';
 export declare class SocketDispatcher {
     private liveGateway;
     private readonly logger;
@@ -15,4 +15,5 @@ export declare class SocketDispatcher {
     handleLeaderboardUpdated(event: LeaderboardUpdatedEvent): void;
     handleRewardReserved(event: RewardReservedEvent): void;
     handleRewardDelivered(event: RewardDeliveredEvent): void;
+    handleSessionReset(event: SessionResetEvent): void;
 }

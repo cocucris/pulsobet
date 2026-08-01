@@ -87,6 +87,11 @@ export declare class MatchStartedEvent {
     readonly eventNumber: number;
     constructor(sessionId: string, match: any, eventNumber: number);
 }
+export declare class SessionResetEvent {
+    readonly sessionId: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, eventNumber: number);
+}
 export declare class MatchFinishedEvent {
     readonly sessionId: string;
     readonly match: any;

@@ -122,7 +122,7 @@ let BarService = class BarService {
         });
     }
     async getPlayerByNickname(sessionId, nickname) {
-        let player = await this.prisma.player.findFirst({
+        const player = await this.prisma.player.findFirst({
             where: { sessionId, nickname: { equals: nickname, mode: 'insensitive' } },
             include: {
                 claims: {
@@ -131,17 +131,6 @@ let BarService = class BarService {
                 },
             },
         });
-        if (!player) {
-            player = await this.prisma.player.findFirst({
-                where: { nickname: { equals: nickname, mode: 'insensitive' } },
-                include: {
-                    claims: {
-                        include: { reward: true },
-                        orderBy: { createdAt: 'desc' },
-                    },
-                },
-            });
-        }
         if (!player) {
             throw new common_1.NotFoundException('Jugador no encontrado.');
         }

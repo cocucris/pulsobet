@@ -103,6 +103,24 @@ export default function PlayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rewardsVersion]);
 
+  // Cierre de noche: el jugador quedó en la sesión archivada → limpiar y volver al onboarding
+  const myPlayer = useSessionStore((s) => s.snapshot?.myPlayer);
+  useEffect(() => {
+    if (myPlayer === null && token) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`pulsobet_player_token:${sessionId}`);
+        localStorage.removeItem(`pulsobet_player_id:${sessionId}`);
+        localStorage.removeItem(`pulsobet_nickname:${sessionId}`);
+      }
+      setToken(null);
+      setPlayerId(null);
+      setTotalPoints(0);
+      setClaims([]);
+      setAnsweredQuestionIds([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myPlayer]);
+
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
   const [selectedTriviaIndex, setSelectedTriviaIndex] = useState(0);
   const [voteError, setVoteError] = useState<string | null>(null);

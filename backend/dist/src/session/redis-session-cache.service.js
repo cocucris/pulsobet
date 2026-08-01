@@ -194,6 +194,16 @@ let RedisSessionCacheService = RedisSessionCacheService_1 = class RedisSessionCa
             this.logger.warn(`Redis fallback on addResolvedTrivia: ${e.message}`);
         }
     }
+    async resetSessionState(sessionId) {
+        try {
+            if (!this.client)
+                return;
+            await this.client.del(`session:${sessionId}:match`, `session:${sessionId}:trivias`, `session:${sessionId}:trivias_resolved`, `session:${sessionId}:event_number`, `session:${sessionId}:version`, `session:${sessionId}:connected`);
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on resetSessionState: ${e.message}`);
+        }
+    }
     async setRewards(barId, rewards) {
         try {
             if (!this.client)

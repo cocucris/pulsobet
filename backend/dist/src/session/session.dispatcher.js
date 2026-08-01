@@ -173,6 +173,17 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
             this.logger.error(`Error en handleRewardDelivered: ${e.message}`);
         }
     }
+    handleSessionReset(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast SESSION_RESET a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'SESSION_RESET', {
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleSessionReset: ${e.message}`);
+        }
+    }
 };
 exports.SocketDispatcher = SocketDispatcher;
 __decorate([
@@ -241,6 +252,12 @@ __decorate([
     __metadata("design:paramtypes", [session_events_1.RewardDeliveredEvent]),
     __metadata("design:returntype", void 0)
 ], SocketDispatcher.prototype, "handleRewardDelivered", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('session.reset'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.SessionResetEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleSessionReset", null);
 exports.SocketDispatcher = SocketDispatcher = SocketDispatcher_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [live_gateway_1.LiveGateway])

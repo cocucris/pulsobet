@@ -18,6 +18,7 @@ import {
   RewardDeliveredEvent,
   MatchStartedEvent,
   MatchFinishedEvent,
+  SessionResetEvent,
 } from './session.events';
 
 @Injectable()
@@ -111,11 +112,14 @@ export class SessionEngine {
     // 2. Trivias activas actuales (pueden coexistir varias: pre-partido + flash).
     // Incluye las cerradas por tiempo sin resolver (isClosed, correctOptionId null):
     // el admin debe poder declarar su resultado igual.
+    // AISLAMIENTO POR NOCHE: solo trivias del partido vinculado a ESTA sesión.
     const cachedTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
-    const dbQuestions = await this.prisma.liveQuestion.findMany({
-      where: { correctOptionId: null },
-      orderBy: { expiresAt: 'asc' },
-    });
+    const dbQuestions = session.matchId
+      ? await this.prisma.liveQuestion.findMany({
+          where: { correctOptionId: null, matchId: session.matchId },
+          orderBy: { expiresAt: 'asc' },
+        })
+      : [];
 
     // Merge por id: la hidratación NO pisa el cache (evita perder trivias recién
     // creadas por race conditions entre el upsert y el fallback a Postgres)
@@ -129,11 +133,11 @@ export class SessionEngine {
     const activeTrivias = merged;
     await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
 
-    // 2b. Historial de trivias resueltas de la sesión (resultados visibles hasta cerrar sesión)
+    // 2b. Historial de trivias resueltas de la sesión (solo del partido de ESTA noche)
     let resolvedTrivias = await this.sessionCache.getResolvedTrivias(actualSessionId);
-    if (resolvedTrivias.length === 0) {
+    if (resolvedTrivias.length === 0 && session.matchId) {
       const resolvedQuestions = await this.prisma.liveQuestion.findMany({
-        where: { correctOptionId: { not: null } },
+        where: { correctOptionId: { not: null }, matchId: session.matchId },
         orderBy: { expiresAt: 'asc' },
         take: 20,
       });
@@ -287,6 +291,51 @@ export class SessionEngine {
     return { status: 'success', message: 'Partido reseteado' };
   }
 
+  /**
+   * CERRAR NOCHE: archiva la sesión actual (con jugadores, puntos y canjes para
+   * reportes) y crea una fresca con el MISMO id, para que el QR/link de siempre
+   * arranque en cero. Limpia todo el estado efímero (Redis) y avisa por socket.
+   */
+  async closeAndResetSession(sessionId: string) {
+    const session = await this.ensureSession(sessionId);
+    const oldId = session.id;
+    const archivedId = `${oldId}-closed-${Date.now()}`;
+
+    await this.prisma.$transaction(async (tx) => {
+      // Archivar la sesión vieja: se renombra el id para liberar el id fijo y se desactiva
+      await tx.gameSession.update({
+        where: { id: oldId },
+        data: { id: archivedId, isActive: false, matchId: null },
+      });
+
+      // Crear la sesión fresca con el id de siempre
+      await tx.gameSession.create({
+        data: {
+          id: oldId,
+          barId: session.barId,
+          isActive: true,
+          matchId: null,
+        },
+      });
+    });
+
+    // Limpiar todo el estado efímero (mismo id de sesión)
+    await this.sessionCache.resetSessionState(oldId);
+    try {
+      await this.redisService.clearLeaderboard(oldId);
+    } catch (e) {
+      this.logger.warn(`Redis fallback on clearLeaderboard al cerrar noche: ${e.message}`);
+    }
+
+    const eventNumber = await this.sessionCache.incrementEventNumber(oldId);
+
+    this.eventEmitter.emit('session.reset', new SessionResetEvent(oldId, eventNumber));
+
+    this.logger.log(`Noche cerrada: sesión ${oldId} archivada como ${archivedId} y recreada en cero.`);
+
+    return { status: 'success', newSessionId: oldId, archivedSessionId: archivedId };
+  }
+
   async updateScore(
     matchId: string,
     scoreHome: number,
@@ -409,10 +458,18 @@ export class SessionEngine {
       });
     }
 
-    let liveMatch = await this.prisma.match.findFirst({
-      where: { status: 'LIVE' },
-      orderBy: { startTime: 'desc' },
-    });
+    // Enlazar la trivia al partido de ESTA sesión (aislamiento por noche);
+    // si la sesión aún no tiene partido, usar/crear uno LIVE como antes
+    let liveMatch = activeSession.matchId
+      ? await this.prisma.match.findUnique({ where: { id: activeSession.matchId } })
+      : null;
+
+    if (!liveMatch) {
+      liveMatch = await this.prisma.match.findFirst({
+        where: { status: 'LIVE' },
+        orderBy: { startTime: 'desc' },
+      });
+    }
 
     if (!liveMatch) {
       liveMatch = await this.prisma.match.create({
@@ -423,6 +480,14 @@ export class SessionEngine {
           startTime: new Date(),
           status: 'LIVE',
         },
+      });
+    }
+
+    // Si la sesión no tenía partido vinculado, vincularlo ahora
+    if (!activeSession.matchId) {
+      await this.prisma.gameSession.update({
+        where: { id: activeSession.id },
+        data: { matchId: liveMatch.id },
       });
     }
 

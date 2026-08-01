@@ -14,6 +14,7 @@ import {
   RewardDeliveredEvent,
   MatchStartedEvent,
   MatchFinishedEvent,
+  SessionResetEvent,
 } from './session.events';
 
 @Injectable()
@@ -182,6 +183,18 @@ export class SocketDispatcher {
       });
     } catch (e) {
       this.logger.error(`Error en handleRewardDelivered: ${e.message}`);
+    }
+  }
+
+  @OnEvent('session.reset')
+  handleSessionReset(event: SessionResetEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast SESSION_RESET a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'SESSION_RESET', {
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleSessionReset: ${e.message}`);
     }
   }
 }

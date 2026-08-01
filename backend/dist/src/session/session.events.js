@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MatchFinishedEvent = exports.MatchStartedEvent = exports.RewardDeliveredEvent = exports.RewardReservedEvent = exports.LeaderboardUpdatedEvent = exports.PlayerVotedEvent = exports.PlayerJoinedEvent = exports.TriviaResultEvent = exports.TriviaClosedEvent = exports.TriviaOpenedEvent = exports.TriviaCreatedEvent = exports.MatchScoreUpdatedEvent = void 0;
+exports.MatchFinishedEvent = exports.SessionResetEvent = exports.MatchStartedEvent = exports.RewardDeliveredEvent = exports.RewardReservedEvent = exports.LeaderboardUpdatedEvent = exports.PlayerVotedEvent = exports.PlayerJoinedEvent = exports.TriviaResultEvent = exports.TriviaClosedEvent = exports.TriviaOpenedEvent = exports.TriviaCreatedEvent = exports.MatchScoreUpdatedEvent = void 0;
 class MatchScoreUpdatedEvent {
     sessionId;
     scoreHome;
@@ -152,6 +152,15 @@ class MatchStartedEvent {
     }
 }
 exports.MatchStartedEvent = MatchStartedEvent;
+class SessionResetEvent {
+    sessionId;
+    eventNumber;
+    constructor(sessionId, eventNumber) {
+        this.sessionId = sessionId;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.SessionResetEvent = SessionResetEvent;
 class MatchFinishedEvent {
     sessionId;
     match;

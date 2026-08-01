@@ -29,6 +29,9 @@ let SessionController = class SessionController {
     async resetMatch(body) {
         return this.sessionEngine.resetMatch(body.sessionId);
     }
+    async closeSession(body) {
+        return this.sessionEngine.closeAndResetSession(body.sessionId);
+    }
 };
 exports.SessionController = SessionController;
 __decorate([
@@ -53,6 +56,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], SessionController.prototype, "resetMatch", null);
+__decorate([
+    (0, common_1.Post)('close'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SessionController.prototype, "closeSession", null);
 exports.SessionController = SessionController = __decorate([
     (0, common_1.Controller)('session'),
     __metadata("design:paramtypes", [session_engine_1.SessionEngine])

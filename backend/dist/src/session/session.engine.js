@@ -96,10 +96,12 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             }
         }
         const cachedTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
-        const dbQuestions = await this.prisma.liveQuestion.findMany({
-            where: { correctOptionId: null },
-            orderBy: { expiresAt: 'asc' },
-        });
+        const dbQuestions = session.matchId
+            ? await this.prisma.liveQuestion.findMany({
+                where: { correctOptionId: null, matchId: session.matchId },
+                orderBy: { expiresAt: 'asc' },
+            })
+            : [];
         const dbTrivias = await Promise.all(dbQuestions.map((q) => this.enrichQuestionStats(q)));
         const merged = [...dbTrivias];
         for (const cached of cachedTrivias) {
@@ -110,9 +112,9 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         const activeTrivias = merged;
         await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
         let resolvedTrivias = await this.sessionCache.getResolvedTrivias(actualSessionId);
-        if (resolvedTrivias.length === 0) {
+        if (resolvedTrivias.length === 0 && session.matchId) {
             const resolvedQuestions = await this.prisma.liveQuestion.findMany({
-                where: { correctOptionId: { not: null } },
+                where: { correctOptionId: { not: null }, matchId: session.matchId },
                 orderBy: { expiresAt: 'asc' },
                 take: 20,
             });
@@ -231,6 +233,36 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         this.eventEmitter.emit('match.finished', new session_events_1.MatchFinishedEvent(session.id, null, eventNumber));
         return { status: 'success', message: 'Partido reseteado' };
     }
+    async closeAndResetSession(sessionId) {
+        const session = await this.ensureSession(sessionId);
+        const oldId = session.id;
+        const archivedId = `${oldId}-closed-${Date.now()}`;
+        await this.prisma.$transaction(async (tx) => {
+            await tx.gameSession.update({
+                where: { id: oldId },
+                data: { id: archivedId, isActive: false, matchId: null },
+            });
+            await tx.gameSession.create({
+                data: {
+                    id: oldId,
+                    barId: session.barId,
+                    isActive: true,
+                    matchId: null,
+                },
+            });
+        });
+        await this.sessionCache.resetSessionState(oldId);
+        try {
+            await this.redisService.clearLeaderboard(oldId);
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on clearLeaderboard al cerrar noche: ${e.message}`);
+        }
+        const eventNumber = await this.sessionCache.incrementEventNumber(oldId);
+        this.eventEmitter.emit('session.reset', new session_events_1.SessionResetEvent(oldId, eventNumber));
+        this.logger.log(`Noche cerrada: sesión ${oldId} archivada como ${archivedId} y recreada en cero.`);
+        return { status: 'success', newSessionId: oldId, archivedSessionId: archivedId };
+    }
     async updateScore(matchId, scoreHome, scoreAway, homeTeam, awayTeam, currentMinute, status) {
         const dataToUpdate = { scoreHome, scoreAway };
         if (homeTeam)
@@ -312,10 +344,15 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 },
             });
         }
-        let liveMatch = await this.prisma.match.findFirst({
-            where: { status: 'LIVE' },
-            orderBy: { startTime: 'desc' },
-        });
+        let liveMatch = activeSession.matchId
+            ? await this.prisma.match.findUnique({ where: { id: activeSession.matchId } })
+            : null;
+        if (!liveMatch) {
+            liveMatch = await this.prisma.match.findFirst({
+                where: { status: 'LIVE' },
+                orderBy: { startTime: 'desc' },
+            });
+        }
         if (!liveMatch) {
             liveMatch = await this.prisma.match.create({
                 data: {
@@ -325,6 +362,12 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                     startTime: new Date(),
                     status: 'LIVE',
                 },
+            });
+        }
+        if (!activeSession.matchId) {
+            await this.prisma.gameSession.update({
+                where: { id: activeSession.id },
+                data: { matchId: liveMatch.id },
             });
         }
         const isFlash = dto.isFlash === true;

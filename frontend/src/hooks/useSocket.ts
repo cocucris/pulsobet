@@ -131,6 +131,7 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       'PLAYER_VOTED',
       'REWARD_RESERVED',
       'REWARD_DELIVERED',
+      'SESSION_RESET',
       // compatibilidad
       'leaderboard_update',
       'match_score_update',

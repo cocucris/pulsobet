@@ -117,6 +117,37 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleCloseNight = async () => {
+    const confirmed = window.confirm(
+      '¿Cerrar la noche y empezar de cero?\n\nSe archivan los puntos y canjes para reportes, y TODAS las pantallas (admin, TV y celulares) vuelven a cero. Los jugadores deberán registrarse de nuevo.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsUpdatingScore(true);
+      const res = await fetch(`${API_URL}/session/close`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        alert(`Error al cerrar la noche: ${data?.message || `HTTP ${res.status}`}`);
+        return;
+      }
+
+      // Actualización optimista: limpiar todo el estado local sin esperar el socket
+      useSessionStore.getState().applyEvent('SESSION_RESET', {});
+    } catch (e) {
+      console.error('Error cerrando la noche:', e);
+      alert('Error de red al cerrar la noche. Verificá la conexión con el servidor.');
+    } finally {
+      setIsUpdatingScore(false);
+    }
+  };
+
   // CASO A: No hay partido registrado aún
   if (!match) {
     return (
@@ -226,6 +257,15 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
             title="Borra el partido actual y resetea las pantallas a cero"
           >
             🧹 Limpiar Pantallas
+          </button>
+
+          <button
+            onClick={handleCloseNight}
+            disabled={isUpdatingScore}
+            className="px-3 py-2 bg-red-700 hover:bg-red-600 text-white font-black text-xs rounded-xl uppercase tracking-wider border border-red-500/60 transition-all"
+            title="Archiva la noche (puntos y canjes quedan para reportes) y reinicia TODO desde cero"
+          >
+            🌙 Cerrar Noche
           </button>
         </div>
       </div>

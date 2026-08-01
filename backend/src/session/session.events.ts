@@ -101,6 +101,13 @@ export class MatchStartedEvent {
   ) {}
 }
 
+export class SessionResetEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly eventNumber: number,
+  ) {}
+}
+
 export class MatchFinishedEvent {
   constructor(
     public readonly sessionId: string,

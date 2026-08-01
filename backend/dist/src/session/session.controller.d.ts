@@ -24,4 +24,11 @@ export declare class SessionController {
         status: string;
         message: string;
     }>;
+    closeSession(body: {
+        sessionId: string;
+    }): Promise<{
+        status: string;
+        newSessionId: string;
+        archivedSessionId: string;
+    }>;
 }
