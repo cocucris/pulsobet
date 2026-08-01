@@ -26,10 +26,10 @@ export declare class BarController {
         } & {
             id: string;
             createdAt: Date;
-            playerId: string;
-            rewardId: string;
             claimCode: string;
             isRedeemed: boolean;
+            playerId: string;
+            rewardId: string;
         })[];
     } & {
         id: string;
@@ -52,10 +52,10 @@ export declare class BarController {
         } & {
             id: string;
             createdAt: Date;
-            playerId: string;
-            rewardId: string;
             claimCode: string;
             isRedeemed: boolean;
+            playerId: string;
+            rewardId: string;
         })[];
     } & {
         id: string;
@@ -69,23 +69,6 @@ export declare class BarController {
         playerId?: string;
         rewardId: string;
     }, req: any): Promise<{
-        reward: {
-            id: string;
-            barId: string;
-            title: string;
-            pointsCost: number;
-            isInstant: boolean;
-            stock: number;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        playerId: string;
-        rewardId: string;
-        claimCode: string;
-        isRedeemed: boolean;
-    }>;
-    staffRedeemReward(redeemRewardDto: RedeemRewardDto, req: any): Promise<{
         player: {
             id: string;
             sessionId: string;
@@ -105,10 +88,44 @@ export declare class BarController {
     } & {
         id: string;
         createdAt: Date;
-        playerId: string;
-        rewardId: string;
         claimCode: string;
         isRedeemed: boolean;
+        playerId: string;
+        rewardId: string;
+    }>;
+    staffRedeemReward(redeemRewardDto: RedeemRewardDto, req: any): Promise<{
+        player: {
+            session: {
+                id: string;
+                barId: string;
+                matchId: string | null;
+                status: import("@prisma/client").$Enums.SessionStatus;
+                date: Date;
+                isActive: boolean;
+            };
+        } & {
+            id: string;
+            sessionId: string;
+            nickname: string;
+            tableNumber: string | null;
+            totalPoints: number;
+            streakCount: number;
+        };
+        reward: {
+            id: string;
+            barId: string;
+            title: string;
+            pointsCost: number;
+            isInstant: boolean;
+            stock: number;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        claimCode: string;
+        isRedeemed: boolean;
+        playerId: string;
+        rewardId: string;
     }>;
     getAnalytics(query: AnalyticsQueryDto): Promise<{
         period: {

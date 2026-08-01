@@ -143,6 +143,34 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
             this.logger.error(`Error en handleLeaderboardUpdated: ${e.message}`);
         }
     }
+    handleRewardReserved(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast REWARD_RESERVED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'REWARD_RESERVED', {
+                claimCode: event.claimCode,
+                rewardTitle: event.rewardTitle,
+                playerNickname: event.playerNickname,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleRewardReserved: ${e.message}`);
+        }
+    }
+    handleRewardDelivered(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast REWARD_DELIVERED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'REWARD_DELIVERED', {
+                claimCode: event.claimCode,
+                rewardTitle: event.rewardTitle,
+                playerNickname: event.playerNickname,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleRewardDelivered: ${e.message}`);
+        }
+    }
 };
 exports.SocketDispatcher = SocketDispatcher;
 __decorate([
@@ -199,6 +227,18 @@ __decorate([
     __metadata("design:paramtypes", [session_events_1.LeaderboardUpdatedEvent]),
     __metadata("design:returntype", void 0)
 ], SocketDispatcher.prototype, "handleLeaderboardUpdated", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('reward.reserved'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.RewardReservedEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleRewardReserved", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('reward.delivered'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.RewardDeliveredEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleRewardDelivered", null);
 exports.SocketDispatcher = SocketDispatcher = SocketDispatcher_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [live_gateway_1.LiveGateway])

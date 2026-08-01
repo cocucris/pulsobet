@@ -1,16 +1,23 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisSessionCacheService } from '../session/redis-session-cache.service';
+import { RewardReservedEvent, RewardDeliveredEvent } from '../session/session.events';
 import { AnalyticsQueryDto, DatePreset } from './dto/analytics-query.dto';
 
 @Injectable()
 export class BarService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
+    private sessionCache: RedisSessionCacheService,
+  ) {}
 
   /**
    * 1. El cliente solicita el canje de un premio (directo o vía ruleta)
    */
   async claimRewardInstant(playerId: string, rewardId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const { claim, sessionId } = await this.prisma.$transaction(async (tx) => {
       // Validar jugador y sesión activa
       const player = await tx.player.findUnique({
         where: { id: playerId },
@@ -57,50 +64,84 @@ export class BarService {
       });
 
       // Crear el registro del reclamo
-      return tx.rewardClaim.create({
+      const newClaim = await tx.rewardClaim.create({
         data: {
           playerId,
           rewardId,
           claimCode,
         },
-        include: { reward: true },
+        include: { reward: true, player: true },
       });
+
+      return { claim: newClaim, sessionId: player.sessionId };
     });
+
+    // Notificar en vivo (jugador, TV y admin ven el canje pendiente al instante)
+    const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+    this.eventEmitter.emit(
+      'reward.reserved',
+      new RewardReservedEvent(
+        sessionId,
+        claim.claimCode,
+        claim.reward.title,
+        claim.player?.nickname || 'Jugador',
+        eventNumber,
+      ),
+    );
+
+    return claim;
   }
 
   /**
    * 2. El mozo valida y procesa el código en la barra
    */
   async redeemRewardCode(barId: string, claimCode: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const claim = await tx.rewardClaim.findUnique({
+    const { claim, sessionId } = await this.prisma.$transaction(async (tx) => {
+      const found = await tx.rewardClaim.findUnique({
         where: { claimCode },
-        include: { 
+        include: {
           reward: true,
           player: { include: { session: true } }
         },
       });
 
-      if (!claim) {
+      if (!found) {
         throw new NotFoundException('Código de canje no encontrado o inválido.');
       }
 
-      if (claim.isRedeemed) {
+      if (found.isRedeemed) {
         throw new BadRequestException('Este código ya fue utilizado y entregado en barra.');
       }
 
       // Seguridad: Asegurar que el código pertenezca al bar del mozo que consulta (con fallback para entorno dev)
-      if (claim.reward.barId !== barId && barId !== 'local-demo' && barId !== 'local-kilkenny-test') {
+      if (found.reward.barId !== barId && barId !== 'local-demo' && barId !== 'local-kilkenny-test') {
         throw new BadRequestException('Este código pertenece a otra sucursal de PulsoBet.');
       }
 
       // Marcar como entregado
-      return tx.rewardClaim.update({
+      const updated = await tx.rewardClaim.update({
         where: { claimCode },
         data: { isRedeemed: true },
-        include: { reward: true, player: true },
+        include: { reward: true, player: { include: { session: true } } },
       });
+
+      return { claim: updated, sessionId: updated.player.sessionId };
     });
+
+    // Notificar en vivo: el celular del jugador marca el voucher como ENTREGADO sin F5
+    const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+    this.eventEmitter.emit(
+      'reward.delivered',
+      new RewardDeliveredEvent(
+        sessionId,
+        claim.claimCode,
+        claim.reward.title,
+        claim.player?.nickname || 'Jugador',
+        eventNumber,
+      ),
+    );
+
+    return claim;
   }
 
   /**

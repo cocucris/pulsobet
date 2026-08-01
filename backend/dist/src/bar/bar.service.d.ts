@@ -1,26 +1,13 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisSessionCacheService } from '../session/redis-session-cache.service';
 import { AnalyticsQueryDto, DatePreset } from './dto/analytics-query.dto';
 export declare class BarService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private eventEmitter;
+    private sessionCache;
+    constructor(prisma: PrismaService, eventEmitter: EventEmitter2, sessionCache: RedisSessionCacheService);
     claimRewardInstant(playerId: string, rewardId: string): Promise<{
-        reward: {
-            id: string;
-            barId: string;
-            title: string;
-            pointsCost: number;
-            isInstant: boolean;
-            stock: number;
-        };
-    } & {
-        id: string;
-        createdAt: Date;
-        playerId: string;
-        rewardId: string;
-        claimCode: string;
-        isRedeemed: boolean;
-    }>;
-    redeemRewardCode(barId: string, claimCode: string): Promise<{
         player: {
             id: string;
             sessionId: string;
@@ -40,10 +27,44 @@ export declare class BarService {
     } & {
         id: string;
         createdAt: Date;
-        playerId: string;
-        rewardId: string;
         claimCode: string;
         isRedeemed: boolean;
+        playerId: string;
+        rewardId: string;
+    }>;
+    redeemRewardCode(barId: string, claimCode: string): Promise<{
+        player: {
+            session: {
+                id: string;
+                barId: string;
+                matchId: string | null;
+                status: import("@prisma/client").$Enums.SessionStatus;
+                date: Date;
+                isActive: boolean;
+            };
+        } & {
+            id: string;
+            sessionId: string;
+            nickname: string;
+            tableNumber: string | null;
+            totalPoints: number;
+            streakCount: number;
+        };
+        reward: {
+            id: string;
+            barId: string;
+            title: string;
+            pointsCost: number;
+            isInstant: boolean;
+            stock: number;
+        };
+    } & {
+        id: string;
+        createdAt: Date;
+        claimCode: string;
+        isRedeemed: boolean;
+        playerId: string;
+        rewardId: string;
     }>;
     getAvailableRewards(sessionId: string): Promise<{
         id: string;
@@ -66,10 +87,10 @@ export declare class BarService {
         } & {
             id: string;
             createdAt: Date;
-            playerId: string;
-            rewardId: string;
             claimCode: string;
             isRedeemed: boolean;
+            playerId: string;
+            rewardId: string;
         })[];
     } & {
         id: string;
@@ -92,10 +113,10 @@ export declare class BarService {
         } & {
             id: string;
             createdAt: Date;
-            playerId: string;
-            rewardId: string;
             claimCode: string;
             isRedeemed: boolean;
+            playerId: string;
+            rewardId: string;
         })[];
     } & {
         id: string;

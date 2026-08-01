@@ -269,6 +269,18 @@ export class SessionEngine {
     if (currentMinute !== undefined) dataToUpdate.currentMinute = currentMinute;
     if (status) dataToUpdate.status = status;
 
+    // Regla de negocio: no se puede finalizar el partido con trivias sin resolver
+    if (status === 'FINISHED') {
+      const pendingTrivias = await this.prisma.liveQuestion.count({
+        where: { matchId, correctOptionId: null },
+      });
+      if (pendingTrivias > 0) {
+        throw new BadRequestException(
+          `Tenés ${pendingTrivias} trivia(s) sin resolver. Resolvelas en el Control de Trivias antes de finalizar el partido.`,
+        );
+      }
+    }
+
     const match = await this.prisma.match.update({
       where: { id: matchId },
       data: dataToUpdate,

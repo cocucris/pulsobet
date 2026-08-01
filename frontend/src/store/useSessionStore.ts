@@ -64,6 +64,9 @@ interface SessionStoreState {
   snapshot: SessionSnapshot | null;
   lastEventNumber: number;
   isConnected: boolean;
+  // Contador que se incrementa con cada evento de canje (reserved/delivered):
+  // las pantallas lo usan como señal para refrescar vouchers/puntos vía REST
+  rewardsVersion: number;
 
   setConnected: (connected: boolean) => void;
   applySnapshot: (snapshot: SessionSnapshot) => void;
@@ -74,6 +77,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   snapshot: null,
   lastEventNumber: 0,
   isConnected: false,
+  rewardsVersion: 0,
 
   setConnected: (isConnected) => set({ isConnected }),
 
@@ -267,6 +271,15 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 : t,
             ),
           },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
+      case 'REWARD_RESERVED':
+      case 'REWARD_DELIVERED':
+        // Señal para que las pantallas refresquen vouchers/puntos vía REST
+        set({
+          rewardsVersion: get().rewardsVersion + 1,
           lastEventNumber: nextEventNumber,
         });
         break;

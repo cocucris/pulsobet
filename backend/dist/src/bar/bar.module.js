@@ -10,11 +10,13 @@ exports.BarModule = void 0;
 const common_1 = require("@nestjs/common");
 const bar_service_1 = require("./bar.service");
 const bar_controller_1 = require("./bar.controller");
+const session_module_1 = require("../session/session.module");
 let BarModule = class BarModule {
 };
 exports.BarModule = BarModule;
 exports.BarModule = BarModule = __decorate([
     (0, common_1.Module)({
+        imports: [session_module_1.SessionModule],
         controllers: [bar_controller_1.BarController],
         providers: [bar_service_1.BarService],
         exports: [bar_service_1.BarService],

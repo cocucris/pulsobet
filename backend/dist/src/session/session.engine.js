@@ -217,6 +217,14 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             dataToUpdate.currentMinute = currentMinute;
         if (status)
             dataToUpdate.status = status;
+        if (status === 'FINISHED') {
+            const pendingTrivias = await this.prisma.liveQuestion.count({
+                where: { matchId, correctOptionId: null },
+            });
+            if (pendingTrivias > 0) {
+                throw new common_1.BadRequestException(`Tenés ${pendingTrivias} trivia(s) sin resolver. Resolvelas en el Control de Trivias antes de finalizar el partido.`);
+            }
+        }
         const match = await this.prisma.match.update({
             where: { id: matchId },
             data: dataToUpdate,

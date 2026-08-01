@@ -15,6 +15,7 @@ export default function PlayPage() {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
   // Estados de Premios y Canjes
   const [totalPoints, setTotalPoints] = useState(0);
@@ -92,12 +93,22 @@ export default function PlayPage() {
     }
   }, [token, playerId, nickname, fetchRewards, refreshPlayerData]);
 
+  // Refrescar vouchers y puntos cuando el servidor avisa de un canje (reservado/entregado)
+  const rewardsVersion = useSessionStore((s) => s.rewardsVersion);
+  useEffect(() => {
+    if (rewardsVersion > 0 && token) {
+      refreshPlayerData(playerId, nickname);
+      fetchRewards();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rewardsVersion]);
+
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
   const [selectedTriviaIndex, setSelectedTriviaIndex] = useState(0);
   const [voteError, setVoteError] = useState<string | null>(null);
 
   // Hook WebSockets
-  const { sendPrediction } = useSocket(sessionId, false, false);
+  const { sendPrediction, reconnectWithToken } = useSocket(sessionId, false, false);
 
   const snapshot = useSessionStore((s) => s.snapshot);
   const isConnected = useSessionStore((s) => s.isConnected);
@@ -136,25 +147,34 @@ export default function PlayPage() {
 
     try {
       setLoading(true);
+      setOnboardingError(null);
       const res = await fetch(`${API_URL}/auth/player/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, nickname }),
       });
 
-      if (!res.ok) throw new Error('Error al registrar jugador');
+      const data = await res.json().catch(() => null);
 
-      const data = await res.json();
-      
+      if (!res.ok) {
+        setOnboardingError(data?.message || 'No se pudo registrar. Intentá con otro apodo.');
+        return;
+      }
+
       localStorage.setItem(`pulsobet_player_token:${sessionId}`, data.player_token);
       localStorage.setItem(`pulsobet_nickname:${sessionId}`, data.player.nickname);
       localStorage.setItem(`pulsobet_player_id:${sessionId}`, data.player.id);
-      
+
       setToken(data.player_token);
       setPlayerId(data.player.id);
       setTotalPoints(data.player.totalPoints || 0);
+
+      // El socket conectó sin token al cargar la página: reconectar con el JWT
+      // para que los votos pasen la validación del servidor.
+      reconnectWithToken(data.player_token);
     } catch (error) {
       console.error('Error en onboarding:', error);
+      setOnboardingError('Error de conexión. Verificá tu internet e intentá de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -252,6 +272,11 @@ export default function PlayPage() {
             >
               Entrar a Jugar
             </button>
+            {onboardingError && (
+              <p className="text-xs font-bold text-red-400 text-center bg-red-500/10 border border-red-500/30 rounded-xl py-2 px-3">
+                {onboardingError}
+              </p>
+            )}
           </form>
         </div>
       </main>

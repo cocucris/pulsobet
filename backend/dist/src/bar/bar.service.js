@@ -11,15 +11,22 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BarService = void 0;
 const common_1 = require("@nestjs/common");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const prisma_service_1 = require("../prisma/prisma.service");
+const redis_session_cache_service_1 = require("../session/redis-session-cache.service");
+const session_events_1 = require("../session/session.events");
 const analytics_query_dto_1 = require("./dto/analytics-query.dto");
 let BarService = class BarService {
     prisma;
-    constructor(prisma) {
+    eventEmitter;
+    sessionCache;
+    constructor(prisma, eventEmitter, sessionCache) {
         this.prisma = prisma;
+        this.eventEmitter = eventEmitter;
+        this.sessionCache = sessionCache;
     }
     async claimRewardInstant(playerId, rewardId) {
-        return this.prisma.$transaction(async (tx) => {
+        const { claim, sessionId } = await this.prisma.$transaction(async (tx) => {
             const player = await tx.player.findUnique({
                 where: { id: playerId },
                 include: { session: true },
@@ -55,40 +62,48 @@ let BarService = class BarService {
                 where: { id: rewardId },
                 data: { stock: { decrement: 1 } },
             });
-            return tx.rewardClaim.create({
+            const newClaim = await tx.rewardClaim.create({
                 data: {
                     playerId,
                     rewardId,
                     claimCode,
                 },
-                include: { reward: true },
+                include: { reward: true, player: true },
             });
+            return { claim: newClaim, sessionId: player.sessionId };
         });
+        const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+        this.eventEmitter.emit('reward.reserved', new session_events_1.RewardReservedEvent(sessionId, claim.claimCode, claim.reward.title, claim.player?.nickname || 'Jugador', eventNumber));
+        return claim;
     }
     async redeemRewardCode(barId, claimCode) {
-        return this.prisma.$transaction(async (tx) => {
-            const claim = await tx.rewardClaim.findUnique({
+        const { claim, sessionId } = await this.prisma.$transaction(async (tx) => {
+            const found = await tx.rewardClaim.findUnique({
                 where: { claimCode },
                 include: {
                     reward: true,
                     player: { include: { session: true } }
                 },
             });
-            if (!claim) {
+            if (!found) {
                 throw new common_1.NotFoundException('Código de canje no encontrado o inválido.');
             }
-            if (claim.isRedeemed) {
+            if (found.isRedeemed) {
                 throw new common_1.BadRequestException('Este código ya fue utilizado y entregado en barra.');
             }
-            if (claim.reward.barId !== barId && barId !== 'local-demo' && barId !== 'local-kilkenny-test') {
+            if (found.reward.barId !== barId && barId !== 'local-demo' && barId !== 'local-kilkenny-test') {
                 throw new common_1.BadRequestException('Este código pertenece a otra sucursal de PulsoBet.');
             }
-            return tx.rewardClaim.update({
+            const updated = await tx.rewardClaim.update({
                 where: { claimCode },
                 data: { isRedeemed: true },
-                include: { reward: true, player: true },
+                include: { reward: true, player: { include: { session: true } } },
             });
+            return { claim: updated, sessionId: updated.player.sessionId };
         });
+        const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+        this.eventEmitter.emit('reward.delivered', new session_events_1.RewardDeliveredEvent(sessionId, claim.claimCode, claim.reward.title, claim.player?.nickname || 'Jugador', eventNumber));
+        return claim;
     }
     async getAvailableRewards(sessionId) {
         let session = await this.prisma.gameSession.findUnique({
@@ -305,6 +320,8 @@ let BarService = class BarService {
 exports.BarService = BarService;
 exports.BarService = BarService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        event_emitter_1.EventEmitter2,
+        redis_session_cache_service_1.RedisSessionCacheService])
 ], BarService);
 //# sourceMappingURL=bar.service.js.map

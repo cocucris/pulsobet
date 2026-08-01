@@ -152,4 +152,34 @@ export class SocketDispatcher {
       this.logger.error(`Error en handleLeaderboardUpdated: ${e.message}`);
     }
   }
+
+  @OnEvent('reward.reserved')
+  handleRewardReserved(event: RewardReservedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast REWARD_RESERVED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'REWARD_RESERVED', {
+        claimCode: event.claimCode,
+        rewardTitle: event.rewardTitle,
+        playerNickname: event.playerNickname,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleRewardReserved: ${e.message}`);
+    }
+  }
+
+  @OnEvent('reward.delivered')
+  handleRewardDelivered(event: RewardDeliveredEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast REWARD_DELIVERED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'REWARD_DELIVERED', {
+        claimCode: event.claimCode,
+        rewardTitle: event.rewardTitle,
+        playerNickname: event.playerNickname,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleRewardDelivered: ${e.message}`);
+    }
+  }
 }

@@ -129,6 +129,8 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       'LEADERBOARD_UPDATED',
       'PLAYER_JOINED',
       'PLAYER_VOTED',
+      'REWARD_RESERVED',
+      'REWARD_DELIVERED',
       // compatibilidad
       'leaderboard_update',
       'match_score_update',
@@ -169,7 +171,18 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     }
   }, []);
 
+  // Tras el registro del jugador, el socket (que conectó sin token al montar la página)
+  // debe reconectar con el JWT para que submit_prediction pase el WsJwtGuard.
+  const reconnectWithToken = useCallback((token: string) => {
+    if (socketRef.current) {
+      socketRef.current.auth = { token };
+      socketRef.current.disconnect();
+      socketRef.current.connect();
+    }
+  }, []);
+
   return {
     sendPrediction,
+    reconnectWithToken,
   };
 };
