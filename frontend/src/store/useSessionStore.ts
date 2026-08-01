@@ -23,6 +23,7 @@ export interface SessionSnapshot {
     options: { id: number; text: string; count: number; percentage: number }[];
     pointsReward: number;
     isFlash: boolean;
+    isClosed?: boolean;
     expiresAt: string;
     totalVotes: number;
     imageUrl?: string | null;
@@ -174,7 +175,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
           snapshot: {
             ...snapshot,
             activeTrivias: triviaId
-              ? snapshot.activeTrivias.filter((t) => t.id !== triviaId)
+              ? snapshot.activeTrivias.map((t) => (t.id === triviaId ? { ...t, isClosed: true } : t))
               : snapshot.activeTrivias,
           },
           lastEventNumber: nextEventNumber,
@@ -225,12 +226,14 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       }
 
       case 'TRIVIA_CLOSED':
+        // La trivia cerrada por tiempo permanece visible (isClosed) para que el
+        // admin declare el resultado; solo se remueve al resolverse (TRIVIA_RESULT)
         set({
           snapshot: {
             ...snapshot,
-            activeTrivias: payload?.triviaId
-              ? snapshot.activeTrivias.filter((t) => t.id !== payload.triviaId)
-              : snapshot.activeTrivias,
+            activeTrivias: snapshot.activeTrivias.map((t) =>
+              t.id === payload?.triviaId ? { ...t, isClosed: true } : t,
+            ),
           },
           lastEventNumber: nextEventNumber,
         });

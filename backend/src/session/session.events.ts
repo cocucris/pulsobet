@@ -31,6 +31,7 @@ export class TriviaClosedEvent {
     public readonly sessionId: string,
     public readonly triviaId: string,
     public readonly eventNumber: number,
+    public readonly trivia?: any,
   ) {}
 }
 

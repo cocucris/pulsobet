@@ -308,12 +308,19 @@ export function TriviaControl({ barId }: { barId: string }) {
                     <span className="text-xs font-bold text-amber-400">
                       {trivia.isFlash ? '⚡ FLASH • ' : ''}Trivia (+{trivia.pointsReward || 150} PTS) • {trivia.totalVotes || 0} VOTOS
                     </span>
-                    <button
-                      onClick={() => handleStartEdit(trivia)}
-                      className="text-slate-400 hover:text-amber-400 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-800"
-                    >
-                      ✏️ Editar
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {trivia.isClosed && (
+                        <span className="text-[10px] font-black uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded-full animate-pulse">
+                          ⏱️ Cerrada — declará el resultado
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleStartEdit(trivia)}
+                        className="text-slate-400 hover:text-amber-400 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-800"
+                      >
+                        ✏️ Editar
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm font-bold text-white mb-3">{trivia.questionText}</p>
                   <span className="text-xs text-slate-400 font-semibold block mb-2">Declarar Respuesta Correcta:</span>

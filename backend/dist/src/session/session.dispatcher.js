@@ -79,9 +79,10 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
             this.logger.log(`[Dispatcher] Broadcast TRIVIA_CLOSED a sesión ${event.sessionId}`);
             this.liveGateway.broadcastToSession(event.sessionId, 'TRIVIA_CLOSED', {
                 triviaId: event.triviaId,
+                trivia: event.trivia,
                 eventNumber: event.eventNumber,
             });
-            this.liveGateway.broadcastToSession(event.sessionId, 'question_resolved', {});
+            this.liveGateway.broadcastToSession(event.sessionId, 'question_resolved', { triviaId: event.triviaId });
         }
         catch (e) {
             this.logger.error(`Error en handleTriviaClosed: ${e.message}`);

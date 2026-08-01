@@ -46,10 +46,12 @@ class TriviaClosedEvent {
     sessionId;
     triviaId;
     eventNumber;
-    constructor(sessionId, triviaId, eventNumber) {
+    trivia;
+    constructor(sessionId, triviaId, eventNumber, trivia) {
         this.sessionId = sessionId;
         this.triviaId = triviaId;
         this.eventNumber = eventNumber;
+        this.trivia = trivia;
     }
 }
 exports.TriviaClosedEvent = TriviaClosedEvent;

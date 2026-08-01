@@ -24,7 +24,8 @@ export declare class TriviaClosedEvent {
     readonly sessionId: string;
     readonly triviaId: string;
     readonly eventNumber: number;
-    constructor(sessionId: string, triviaId: string, eventNumber: number);
+    readonly trivia?: any | undefined;
+    constructor(sessionId: string, triviaId: string, eventNumber: number, trivia?: any | undefined);
 }
 export declare class TriviaResultEvent {
     readonly sessionId: string;

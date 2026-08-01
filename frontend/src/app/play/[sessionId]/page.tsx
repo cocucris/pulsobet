@@ -113,7 +113,7 @@ export default function PlayPage() {
   const snapshot = useSessionStore((s) => s.snapshot);
   const isConnected = useSessionStore((s) => s.isConnected);
 
-  const allActiveQuestions = snapshot?.activeTrivias || [];
+  const allActiveQuestions = (snapshot?.activeTrivias || []).filter((q) => !q.isClosed);
   // La trivia mostrada es la de la pestaña seleccionada (clamp si cambia el array)
   const currentTrivia = allActiveQuestions.length > 0
     ? allActiveQuestions[Math.min(selectedTriviaIndex, allActiveQuestions.length - 1)]
@@ -121,6 +121,24 @@ export default function PlayPage() {
   const isCurrentTriviaAnswered = currentTrivia
     ? answeredQuestionIds.includes(currentTrivia.id) || !!snapshot?.myPlayer?.votedTriviaIds?.includes(currentTrivia.id)
     : false;
+
+  // Reloj para la cuenta regresiva de la trivia flash
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Trivia flash vigente y no respondida: se muestra como overlay prioritario
+  const flashQuestion = allActiveQuestions.find((q) => {
+    if (!q.isFlash) return false;
+    const expires = new Date(q.expiresAt).getTime();
+    const answered = answeredQuestionIds.includes(q.id) || !!snapshot?.myPlayer?.votedTriviaIds?.includes(q.id);
+    return expires > currentTime && !answered;
+  }) || null;
+  const flashRemainingSeconds = flashQuestion
+    ? Math.max(0, Math.ceil((new Date(flashQuestion.expiresAt).getTime() - currentTime) / 1000))
+    : 0;
 
   const matchData = snapshot?.match;
   const leaderboard = snapshot?.leaderboardTop10 || [];
@@ -386,6 +404,12 @@ export default function PlayPage() {
             )}
 
             <h2 className="text-base font-bold mb-4 text-center leading-snug text-white">{currentTrivia.questionText}</h2>
+
+            {voteError && !isCurrentTriviaAnswered && (
+              <p className="mb-3 text-xs font-bold text-red-400 text-center bg-red-500/10 border border-red-500/30 rounded-xl py-2 px-3">
+                {voteError}
+              </p>
+            )}
             
             {isCurrentTriviaAnswered ? (
               <div className="text-center py-5 bg-slate-950/50 rounded-xl border border-green-500/30">
@@ -531,6 +555,48 @@ export default function PlayPage() {
       <footer className="w-full py-3 text-center text-[10px] text-slate-500 border-t border-slate-800/60 mt-2">
         PulsoBet • Experiencia Interactiva en Vivo
       </footer>
+
+      {/* ⚡ OVERLAY TRIVIA FLASH: prioridad total sobre la pantalla para votar rápido */}
+      {flashQuestion && flashRemainingSeconds > 0 && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-5 animate-fade-in">
+          <div className="w-full max-w-md bg-slate-900 border-4 border-amber-400 rounded-3xl p-6 shadow-[0_0_50px_rgba(251,191,36,0.6)] flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <span className="bg-amber-400 text-slate-950 px-3.5 py-1 rounded-full font-black text-xs uppercase tracking-widest animate-pulse">
+                ⚡ Trivia Flash ⚡
+              </span>
+              <span className="bg-slate-950 text-amber-400 border border-amber-400/40 px-3.5 py-1 rounded-full font-mono font-black text-lg">
+                ⏱️ 00:{flashRemainingSeconds < 10 ? `0${flashRemainingSeconds}` : flashRemainingSeconds}
+              </span>
+            </div>
+
+            <h2 className="text-lg font-black text-center text-white leading-snug uppercase">
+              {flashQuestion.questionText}
+            </h2>
+
+            {voteError && (
+              <p className="text-xs font-bold text-red-400 text-center bg-red-500/10 border border-red-500/30 rounded-xl py-2 px-3">
+                {voteError}
+              </p>
+            )}
+
+            <div className="flex flex-col gap-2.5">
+              {flashQuestion.options.map((option: any) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleSelectOption(flashQuestion.id, option.id)}
+                  className="w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl transition-all font-black text-sm uppercase tracking-wider active:scale-95 shadow-lg"
+                >
+                  {option.text}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-center text-[11px] font-bold text-amber-400/80 uppercase tracking-wider">
+              +{flashQuestion.pointsReward || 900} pts · ¡Votá antes de que termine!
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

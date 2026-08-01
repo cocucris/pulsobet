@@ -108,19 +108,26 @@ export class SessionEngine {
 
 
 
-    // 2. Trivias activas actuales (pueden coexistir varias: pre-partido + flash)
-    let activeTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
-    if (activeTrivias.length === 0) {
-      const activeQuestions = await this.prisma.liveQuestion.findMany({
-        where: { correctOptionId: null, isClosed: false, expiresAt: { gt: new Date() } },
-        orderBy: { expiresAt: 'asc' },
-      });
+    // 2. Trivias activas actuales (pueden coexistir varias: pre-partido + flash).
+    // Incluye las cerradas por tiempo sin resolver (isClosed, correctOptionId null):
+    // el admin debe poder declarar su resultado igual.
+    const cachedTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
+    const dbQuestions = await this.prisma.liveQuestion.findMany({
+      where: { correctOptionId: null },
+      orderBy: { expiresAt: 'asc' },
+    });
 
-      if (activeQuestions.length > 0) {
-        activeTrivias = await Promise.all(activeQuestions.map((q) => this.enrichQuestionStats(q)));
-        await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
+    // Merge por id: la hidratación NO pisa el cache (evita perder trivias recién
+    // creadas por race conditions entre el upsert y el fallback a Postgres)
+    const dbTrivias = await Promise.all(dbQuestions.map((q) => this.enrichQuestionStats(q)));
+    const merged = [...dbTrivias];
+    for (const cached of cachedTrivias) {
+      if (cached?.id && !merged.some((t) => t.id === cached.id) && cached.correctOptionId == null) {
+        merged.push(cached);
       }
     }
+    const activeTrivias = merged;
+    await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
 
     // 2b. Historial de trivias resueltas de la sesión (resultados visibles hasta cerrar sesión)
     let resolvedTrivias = await this.sessionCache.getResolvedTrivias(actualSessionId);
@@ -467,18 +474,21 @@ export class SessionEngine {
   }
 
   async closeTrivia(sessionId: string, triviaId: string) {
-    await this.prisma.liveQuestion.update({
+    const closed = await this.prisma.liveQuestion.update({
       where: { id: triviaId },
       data: { isClosed: true },
     });
 
-    await this.sessionCache.removeActiveTrivia(sessionId, triviaId);
+    // La trivia cerrada por tiempo PERMANECE visible (isClosed) para que el admin
+    // pueda declarar su resultado; solo se remueve al resolverse.
+    const enriched = await this.enrichQuestionStats(closed);
+    await this.sessionCache.upsertActiveTrivia(sessionId, enriched);
     await this.sessionCache.incrementVersion(sessionId);
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
     this.eventEmitter.emit(
       'trivia.closed',
-      new TriviaClosedEvent(sessionId, triviaId, eventNumber),
+      new TriviaClosedEvent(sessionId, triviaId, eventNumber, enriched),
     );
   }
 

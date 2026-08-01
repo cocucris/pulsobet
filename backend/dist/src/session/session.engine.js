@@ -95,17 +95,20 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 await this.sessionCache.setMatch(actualSessionId, matchData);
             }
         }
-        let activeTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
-        if (activeTrivias.length === 0) {
-            const activeQuestions = await this.prisma.liveQuestion.findMany({
-                where: { correctOptionId: null, isClosed: false, expiresAt: { gt: new Date() } },
-                orderBy: { expiresAt: 'asc' },
-            });
-            if (activeQuestions.length > 0) {
-                activeTrivias = await Promise.all(activeQuestions.map((q) => this.enrichQuestionStats(q)));
-                await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
+        const cachedTrivias = await this.sessionCache.getActiveTrivias(actualSessionId);
+        const dbQuestions = await this.prisma.liveQuestion.findMany({
+            where: { correctOptionId: null },
+            orderBy: { expiresAt: 'asc' },
+        });
+        const dbTrivias = await Promise.all(dbQuestions.map((q) => this.enrichQuestionStats(q)));
+        const merged = [...dbTrivias];
+        for (const cached of cachedTrivias) {
+            if (cached?.id && !merged.some((t) => t.id === cached.id) && cached.correctOptionId == null) {
+                merged.push(cached);
             }
         }
+        const activeTrivias = merged;
+        await this.sessionCache.setActiveTrivias(actualSessionId, activeTrivias);
         let resolvedTrivias = await this.sessionCache.getResolvedTrivias(actualSessionId);
         if (resolvedTrivias.length === 0) {
             const resolvedQuestions = await this.prisma.liveQuestion.findMany({
@@ -360,14 +363,15 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         };
     }
     async closeTrivia(sessionId, triviaId) {
-        await this.prisma.liveQuestion.update({
+        const closed = await this.prisma.liveQuestion.update({
             where: { id: triviaId },
             data: { isClosed: true },
         });
-        await this.sessionCache.removeActiveTrivia(sessionId, triviaId);
+        const enriched = await this.enrichQuestionStats(closed);
+        await this.sessionCache.upsertActiveTrivia(sessionId, enriched);
         await this.sessionCache.incrementVersion(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
-        this.eventEmitter.emit('trivia.closed', new session_events_1.TriviaClosedEvent(sessionId, triviaId, eventNumber));
+        this.eventEmitter.emit('trivia.closed', new session_events_1.TriviaClosedEvent(sessionId, triviaId, eventNumber, enriched));
     }
     async resolveQuestionExpress(questionId, correctOptionId) {
         const question = await this.prisma.liveQuestion.findUnique({

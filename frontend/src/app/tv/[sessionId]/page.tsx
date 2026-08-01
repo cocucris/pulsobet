@@ -46,7 +46,7 @@ export default function TvPage() {
   const displayLeaderboard = snapshot?.leaderboardTop10 || [];
   const displayMatch = snapshot?.match || null;
 
-  const rawActiveQuestions = snapshot?.activeTrivias || [];
+  const rawActiveQuestions = (snapshot?.activeTrivias || []).filter((q: any) => !q.isClosed);
   const resolvedTrivias = snapshot?.resolvedTrivias || [];
 
 
