@@ -20,6 +20,12 @@ export declare class RedisSessionCacheService {
     getResolvedTrivias(sessionId: string): Promise<any[]>;
     addResolvedTrivia(sessionId: string, trivia: any): Promise<void>;
     resetSessionState(sessionId: string): Promise<void>;
+    getMode(sessionId: string): Promise<string | null>;
+    setMode(sessionId: string, mode: string): Promise<void>;
+    getActiveCard(sessionId: string): Promise<any | null>;
+    setActiveCard(sessionId: string, card: any): Promise<void>;
+    getCardsHistory(sessionId: string): Promise<any[]>;
+    addCardToHistory(sessionId: string, card: any): Promise<void>;
     setRewards(barId: string, rewards: any[]): Promise<void>;
     getRewards(barId: string): Promise<any[] | null>;
 }

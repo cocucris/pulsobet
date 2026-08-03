@@ -69,5 +69,35 @@ export interface SessionSnapshot {
         name: string;
         slug: string;
     };
+    mode: string;
+    activeCard: {
+        id: string;
+        sessionId: string;
+        tableNumber: string | null;
+        name: string;
+        age: number | null;
+        position: string | null;
+        strongFoot: string | null;
+        fitness: number | null;
+        skills: {
+            key: string;
+            label: string;
+            icon: string;
+            stars: number;
+        }[];
+        objective: string | null;
+        photoUrl: string | null;
+        status: string;
+        createdAt: Date;
+        counts: {
+            interested: number;
+            introduce: number;
+            pass: number;
+        };
+        totalVotes: number;
+    } | null;
+    cardsHistory: any[];
+    pendingCardsCount: number;
+    myCardVote: string | null;
     connectionStatus: 'connected';
 }

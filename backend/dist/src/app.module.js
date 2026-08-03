@@ -17,12 +17,13 @@ const live_module_1 = require("./live/live.module");
 const auth_module_1 = require("./auth/auth.module");
 const redis_module_1 = require("./redis/redis.module");
 const session_module_1 = require("./session/session.module");
+const cards_module_1 = require("./cards/cards.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, bar_module_1.BarModule, match_module_1.MatchModule, live_module_1.LiveModule, auth_module_1.AuthModule, redis_module_1.RedisModule, session_module_1.SessionModule],
+        imports: [prisma_module_1.PrismaModule, bar_module_1.BarModule, match_module_1.MatchModule, live_module_1.LiveModule, auth_module_1.AuthModule, redis_module_1.RedisModule, session_module_1.SessionModule, cards_module_1.CardsModule],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],
     })

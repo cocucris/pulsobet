@@ -171,6 +171,55 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             });
             await this.sessionCache.setRewards(session.barId, rewards);
         }
+        let mode = await this.sessionCache.getMode(actualSessionId);
+        if (!mode) {
+            mode = session.mode || 'MATCH';
+            await this.sessionCache.setMode(actualSessionId, mode);
+        }
+        const sessionMode = mode;
+        let activeCard = await this.sessionCache.getActiveCard(actualSessionId);
+        if (!activeCard) {
+            const dbCard = await this.prisma.profileCard.findFirst({
+                where: { sessionId: actualSessionId, status: 'APPROVED' },
+                orderBy: { createdAt: 'desc' },
+            });
+            if (dbCard) {
+                const latestApproved = await this.prisma.profileCard.findFirst({
+                    where: { sessionId: actualSessionId, status: 'APPROVED' },
+                    orderBy: { createdAt: 'desc' },
+                });
+                if (latestApproved && latestApproved.id === dbCard.id) {
+                    activeCard = await this.enrichCardForSnapshot(dbCard);
+                    await this.sessionCache.setActiveCard(actualSessionId, activeCard);
+                }
+            }
+        }
+        let cardsHistory = await this.sessionCache.getCardsHistory(actualSessionId);
+        if (cardsHistory.length === 0) {
+            const approvedCards = await this.prisma.profileCard.findMany({
+                where: { sessionId: actualSessionId, status: 'APPROVED' },
+                orderBy: { createdAt: 'asc' },
+            });
+            const historyCards = activeCard
+                ? approvedCards.filter((c) => c.id !== activeCard.id)
+                : approvedCards.slice(0, -1);
+            if (historyCards.length > 0) {
+                cardsHistory = await Promise.all(historyCards.map((c) => this.enrichCardForSnapshot(c)));
+                for (const c of cardsHistory) {
+                    await this.sessionCache.addCardToHistory(actualSessionId, c);
+                }
+            }
+        }
+        const pendingCardsCount = await this.prisma.profileCard.count({
+            where: { sessionId: actualSessionId, status: 'PENDING' },
+        });
+        let myCardVote = null;
+        if (playerId && activeCard) {
+            const vote = await this.prisma.cardVote.findUnique({
+                where: { cardId_playerId: { cardId: activeCard.id, playerId } },
+            });
+            myCardVote = vote?.choice || null;
+        }
         return {
             sessionId: actualSessionId,
             barId: session.barId,
@@ -184,6 +233,11 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             myPlayer,
             connectedPlayersCount,
             rewards: rewards || [],
+            mode: sessionMode,
+            activeCard,
+            cardsHistory,
+            pendingCardsCount,
+            myCardVote,
             barSettings: {
                 name: session.bar?.name || 'PulsoBet Bar',
                 slug: session.bar?.slug || 'pulsobet',
@@ -546,6 +600,39 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             totalPoints: p.totalPoints,
             streakCount: p.streakCount,
         }));
+    }
+    async enrichCardForSnapshot(card) {
+        const grouped = await this.prisma.cardVote.groupBy({
+            by: ['choice'],
+            where: { cardId: card.id },
+            _count: { id: true },
+        });
+        const counts = { interested: 0, introduce: 0, pass: 0 };
+        for (const g of grouped) {
+            if (g.choice === 'INTERESTED')
+                counts.interested = g._count.id;
+            if (g.choice === 'INTRODUCE')
+                counts.introduce = g._count.id;
+            if (g.choice === 'PASS')
+                counts.pass = g._count.id;
+        }
+        return {
+            id: card.id,
+            sessionId: card.sessionId,
+            tableNumber: card.tableNumber,
+            name: card.name,
+            age: card.age,
+            position: card.position,
+            strongFoot: card.strongFoot,
+            fitness: card.fitness,
+            skills: card.skills,
+            objective: card.objective,
+            photoUrl: card.photoUrl,
+            status: card.status,
+            createdAt: card.createdAt,
+            counts,
+            totalVotes: counts.interested + counts.introduce + counts.pass,
+        };
     }
     async enrichQuestionStats(question) {
         const voteCounts = await this.prisma.prediction.groupBy({

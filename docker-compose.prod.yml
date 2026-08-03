@@ -14,6 +14,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=*
       - REDIS_URL=redis://redis:6379
+      - UPLOADS_DIR=/app/uploads/cards
+    volumes:
+      - uploads_data:/app/uploads
     expose:
       - "3001"
     depends_on:
@@ -52,3 +55,4 @@ networks:
 volumes:
   caddy_data:
   caddy_config:
+  uploads_data:

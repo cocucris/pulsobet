@@ -37,6 +37,9 @@ COPY --from=builder /app/dist ./dist
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
+# Directorio persistente para fotos de fichas (montar Volume en /app/uploads)
+RUN mkdir -p /app/uploads/cards
+
 ENV NODE_ENV=production
 EXPOSE 3001
 

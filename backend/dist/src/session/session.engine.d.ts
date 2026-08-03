@@ -25,6 +25,7 @@ export declare class SessionEngine {
         barId: string;
         matchId: string | null;
         status: import("@prisma/client").$Enums.SessionStatus;
+        mode: string;
         date: Date;
         isActive: boolean;
     }>;
@@ -115,5 +116,6 @@ export declare class SessionEngine {
         reason?: undefined;
     }>;
     private getLeaderboard;
+    private enrichCardForSnapshot;
     private enrichQuestionStats;
 }

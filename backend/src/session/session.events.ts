@@ -108,6 +108,50 @@ export class SessionResetEvent {
   ) {}
 }
 
+export class CardSubmittedEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly card: any,
+    public readonly pendingCount: number,
+    public readonly eventNumber: number,
+  ) {}
+}
+
+export class CardPublishedEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly card: any,
+    public readonly eventNumber: number,
+  ) {}
+}
+
+export class CardVoteUpdatedEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly cardId: string,
+    public readonly counts: { interested: number; introduce: number; pass: number },
+    public readonly totalVotes: number,
+    public readonly eventNumber: number,
+  ) {}
+}
+
+export class CardClosedEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly cardId: string,
+    public readonly card: any,
+    public readonly eventNumber: number,
+  ) {}
+}
+
+export class SessionModeChangedEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly mode: string,
+    public readonly eventNumber: number,
+  ) {}
+}
+
 export class MatchFinishedEvent {
   constructor(
     public readonly sessionId: string,

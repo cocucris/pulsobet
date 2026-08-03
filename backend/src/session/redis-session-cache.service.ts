@@ -181,9 +181,74 @@ export class RedisSessionCacheService {
         `session:${sessionId}:event_number`,
         `session:${sessionId}:version`,
         `session:${sessionId}:connected`,
+        `session:${sessionId}:card_active`,
+        `session:${sessionId}:cards_history`,
+        `session:${sessionId}:mode`,
       );
     } catch (e) {
       this.logger.warn(`Redis fallback on resetSessionState: ${e.message}`);
+    }
+  }
+
+  // ─── MODO FICHAJE (Fichas Técnicas) ──────────────────────────────────
+
+  async getMode(sessionId: string): Promise<string | null> {
+    try {
+      if (!this.client) return null;
+      return await this.client.get(`session:${sessionId}:mode`);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async setMode(sessionId: string, mode: string): Promise<void> {
+    try {
+      if (!this.client) return;
+      await this.client.set(`session:${sessionId}:mode`, mode);
+    } catch (e) {
+      this.logger.warn(`Redis fallback on setMode: ${e.message}`);
+    }
+  }
+
+  async getActiveCard(sessionId: string): Promise<any | null> {
+    try {
+      if (!this.client) return null;
+      const data = await this.client.get(`session:${sessionId}:card_active`);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async setActiveCard(sessionId: string, card: any): Promise<void> {
+    try {
+      if (!this.client) return;
+      await this.client.set(`session:${sessionId}:card_active`, JSON.stringify(card));
+    } catch (e) {
+      this.logger.warn(`Redis fallback on setActiveCard: ${e.message}`);
+    }
+  }
+
+  async getCardsHistory(sessionId: string): Promise<any[]> {
+    try {
+      if (!this.client) return [];
+      const data = await this.client.get(`session:${sessionId}:cards_history`);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async addCardToHistory(sessionId: string, card: any): Promise<void> {
+    try {
+      if (!this.client) return;
+      const history = await this.getCardsHistory(sessionId);
+      const idx = history.findIndex((c) => c.id === card.id);
+      if (idx >= 0) history[idx] = card;
+      else history.push(card);
+      await this.client.set(`session:${sessionId}:cards_history`, JSON.stringify(history));
+    } catch (e) {
+      this.logger.warn(`Redis fallback on addCardToHistory: ${e.message}`);
     }
   }
 

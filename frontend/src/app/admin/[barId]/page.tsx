@@ -8,6 +8,7 @@ import { ScoreBoardControl } from './components/ScoreBoardControl';
 import { TriviaControl } from './components/TriviaControl';
 import { RewardValidator } from './components/RewardValidator';
 import { AnalyticsWidget } from './components/AnalyticsWidget';
+import { CardsControl } from './components/CardsControl';
 import { API_URL } from '@/config/api';
 
 export default function AdminBarPage() {
@@ -62,6 +63,10 @@ export default function AdminBarPage() {
       <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
         <RewardValidator barId={barId} onRedeemedSuccess={() => setRefreshAnalyticsKey((k) => k + 1)} />
         <TriviaControl barId={barId} />
+      </div>
+
+      <div className="max-w-5xl mx-auto mt-8">
+        <CardsControl sessionId={socketSessionId} />
       </div>
 
       <div className="max-w-5xl mx-auto mt-8">

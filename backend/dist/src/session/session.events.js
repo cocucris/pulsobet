@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MatchFinishedEvent = exports.SessionResetEvent = exports.MatchStartedEvent = exports.RewardDeliveredEvent = exports.RewardReservedEvent = exports.LeaderboardUpdatedEvent = exports.PlayerVotedEvent = exports.PlayerJoinedEvent = exports.TriviaResultEvent = exports.TriviaClosedEvent = exports.TriviaOpenedEvent = exports.TriviaCreatedEvent = exports.MatchScoreUpdatedEvent = void 0;
+exports.MatchFinishedEvent = exports.SessionModeChangedEvent = exports.CardClosedEvent = exports.CardVoteUpdatedEvent = exports.CardPublishedEvent = exports.CardSubmittedEvent = exports.SessionResetEvent = exports.MatchStartedEvent = exports.RewardDeliveredEvent = exports.RewardReservedEvent = exports.LeaderboardUpdatedEvent = exports.PlayerVotedEvent = exports.PlayerJoinedEvent = exports.TriviaResultEvent = exports.TriviaClosedEvent = exports.TriviaOpenedEvent = exports.TriviaCreatedEvent = exports.MatchScoreUpdatedEvent = void 0;
 class MatchScoreUpdatedEvent {
     sessionId;
     scoreHome;
@@ -161,6 +161,69 @@ class SessionResetEvent {
     }
 }
 exports.SessionResetEvent = SessionResetEvent;
+class CardSubmittedEvent {
+    sessionId;
+    card;
+    pendingCount;
+    eventNumber;
+    constructor(sessionId, card, pendingCount, eventNumber) {
+        this.sessionId = sessionId;
+        this.card = card;
+        this.pendingCount = pendingCount;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.CardSubmittedEvent = CardSubmittedEvent;
+class CardPublishedEvent {
+    sessionId;
+    card;
+    eventNumber;
+    constructor(sessionId, card, eventNumber) {
+        this.sessionId = sessionId;
+        this.card = card;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.CardPublishedEvent = CardPublishedEvent;
+class CardVoteUpdatedEvent {
+    sessionId;
+    cardId;
+    counts;
+    totalVotes;
+    eventNumber;
+    constructor(sessionId, cardId, counts, totalVotes, eventNumber) {
+        this.sessionId = sessionId;
+        this.cardId = cardId;
+        this.counts = counts;
+        this.totalVotes = totalVotes;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.CardVoteUpdatedEvent = CardVoteUpdatedEvent;
+class CardClosedEvent {
+    sessionId;
+    cardId;
+    card;
+    eventNumber;
+    constructor(sessionId, cardId, card, eventNumber) {
+        this.sessionId = sessionId;
+        this.cardId = cardId;
+        this.card = card;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.CardClosedEvent = CardClosedEvent;
+class SessionModeChangedEvent {
+    sessionId;
+    mode;
+    eventNumber;
+    constructor(sessionId, mode, eventNumber) {
+        this.sessionId = sessionId;
+        this.mode = mode;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.SessionModeChangedEvent = SessionModeChangedEvent;
 class MatchFinishedEvent {
     sessionId;
     match;

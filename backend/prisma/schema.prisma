@@ -89,14 +89,16 @@ enum SessionStatus {
 }
 
 model GameSession {
-  id          String        @id @default(uuid())
-  barId       String
-  bar         Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
-  matchId     String?
-  status      SessionStatus @default(LIVE)
-  date        DateTime      @default(now())
-  isActive    Boolean       @default(true)
-  players     Player[]
+  id           String        @id @default(uuid())
+  barId        String
+  bar          Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
+  matchId      String?
+  status       SessionStatus @default(LIVE)
+  mode         String        @default("MATCH") // "MATCH" (trivias de fútbol) | "CARDS" (fichaje)
+  date         DateTime      @default(now())
+  isActive     Boolean       @default(true)
+  players      Player[]
+  profileCards ProfileCard[]
 }
 
 model Player {
@@ -145,4 +147,46 @@ model RewardClaim {
   claimCode   String   @unique // Código corto de 4 dígitos (ej: "X7Y2") legible para el mozo
   isRedeemed  Boolean  @default(false)
   createdAt   DateTime @default(now())
+}
+
+enum CardStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CardChoice {
+  INTERESTED
+  INTRODUCE
+  PASS
+}
+
+model ProfileCard {
+  id          String      @id @default(uuid())
+  sessionId   String
+  session     GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  playerId    String?     // Quién cargó la ficha (jugador de la mesa)
+  tableNumber String?     // Mesa desde la que se cargó (QR ?mesa=N o input manual)
+  name        String      // Ej: "CRISTÓBAL"
+  age         Int?
+  position    String?     // Ej: "DELANTERO ROMÁNTICO"
+  strongFoot  String?     // "DERECHA" | "IZQUIERDA" | "AMBAS"
+  fitness     Int?        // 1-10 ("ESTADO FÍSICO 9/10")
+  skills      Json        // [{ key, label, icon, stars (1-5) }] — máx ~6 habilidades
+  objective   String?     // "OBJETIVO DE LA TEMPORADA: ..."
+  photoUrl    String?     // /uploads/cards/<archivo>
+  status      CardStatus  @default(PENDING)
+  createdAt   DateTime    @default(now())
+  votes       CardVote[]
+}
+
+model CardVote {
+  id        String     @id @default(uuid())
+  cardId    String
+  card      ProfileCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  playerId  String
+  choice    CardChoice
+  createdAt DateTime   @default(now())
+
+  @@unique([cardId, playerId]) // Un voto por persona por ficha (re-votar = cambiar voto)
 }

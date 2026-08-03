@@ -15,6 +15,11 @@ import {
   MatchStartedEvent,
   MatchFinishedEvent,
   SessionResetEvent,
+  CardSubmittedEvent,
+  CardPublishedEvent,
+  CardVoteUpdatedEvent,
+  CardClosedEvent,
+  SessionModeChangedEvent,
 } from './session.events';
 
 @Injectable()
@@ -195,6 +200,75 @@ export class SocketDispatcher {
       });
     } catch (e) {
       this.logger.error(`Error en handleSessionReset: ${e.message}`);
+    }
+  }
+
+  @OnEvent('card.submitted')
+  handleCardSubmitted(event: CardSubmittedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast CARD_SUBMITTED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'CARD_SUBMITTED', {
+        card: event.card,
+        pendingCount: event.pendingCount,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleCardSubmitted: ${e.message}`);
+    }
+  }
+
+  @OnEvent('card.published')
+  handleCardPublished(event: CardPublishedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast CARD_PUBLISHED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'CARD_PUBLISHED', {
+        card: event.card,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleCardPublished: ${e.message}`);
+    }
+  }
+
+  @OnEvent('card.vote.updated')
+  handleCardVoteUpdated(event: CardVoteUpdatedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast CARD_VOTE_UPDATED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'CARD_VOTE_UPDATED', {
+        cardId: event.cardId,
+        counts: event.counts,
+        totalVotes: event.totalVotes,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleCardVoteUpdated: ${e.message}`);
+    }
+  }
+
+  @OnEvent('card.closed')
+  handleCardClosed(event: CardClosedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast CARD_CLOSED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'CARD_CLOSED', {
+        cardId: event.cardId,
+        card: event.card,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleCardClosed: ${e.message}`);
+    }
+  }
+
+  @OnEvent('session.mode.changed')
+  handleSessionModeChanged(event: SessionModeChangedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast SESSION_MODE_CHANGED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'SESSION_MODE_CHANGED', {
+        mode: event.mode,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleSessionModeChanged: ${e.message}`);
     }
   }
 }

@@ -92,6 +92,48 @@ export declare class SessionResetEvent {
     readonly eventNumber: number;
     constructor(sessionId: string, eventNumber: number);
 }
+export declare class CardSubmittedEvent {
+    readonly sessionId: string;
+    readonly card: any;
+    readonly pendingCount: number;
+    readonly eventNumber: number;
+    constructor(sessionId: string, card: any, pendingCount: number, eventNumber: number);
+}
+export declare class CardPublishedEvent {
+    readonly sessionId: string;
+    readonly card: any;
+    readonly eventNumber: number;
+    constructor(sessionId: string, card: any, eventNumber: number);
+}
+export declare class CardVoteUpdatedEvent {
+    readonly sessionId: string;
+    readonly cardId: string;
+    readonly counts: {
+        interested: number;
+        introduce: number;
+        pass: number;
+    };
+    readonly totalVotes: number;
+    readonly eventNumber: number;
+    constructor(sessionId: string, cardId: string, counts: {
+        interested: number;
+        introduce: number;
+        pass: number;
+    }, totalVotes: number, eventNumber: number);
+}
+export declare class CardClosedEvent {
+    readonly sessionId: string;
+    readonly cardId: string;
+    readonly card: any;
+    readonly eventNumber: number;
+    constructor(sessionId: string, cardId: string, card: any, eventNumber: number);
+}
+export declare class SessionModeChangedEvent {
+    readonly sessionId: string;
+    readonly mode: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, mode: string, eventNumber: number);
+}
 export declare class MatchFinishedEvent {
     readonly sessionId: string;
     readonly match: any;

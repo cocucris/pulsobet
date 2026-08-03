@@ -7,6 +7,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { API_URL } from '@/config/api';
 
 import { useSessionStore } from '@/store/useSessionStore';
+import { CardDisplay } from './components/CardDisplay';
 
 // Imágenes predeterminadas de respaldo por si no se adjunta flyer
 const DEFAULT_IMAGES = [
@@ -192,7 +193,10 @@ export default function TvPage() {
         </div>
       </section>
 
-      {/* SECCIÓN DERECHA: Lista de Trivias Estándar + Overlay Popup Trivia Flash ⚡ (2/3) */}
+      {/* SECCIÓN DERECHA: MODO FICHAJE (cromo) o MODO PARTIDO (trivias) */}
+      {snapshot?.mode === 'CARDS' ? (
+        <CardDisplay />
+      ) : (
       <section className="w-2/3 flex flex-col justify-between bg-slate-900/30 border border-slate-800/80 rounded-3xl p-6 relative overflow-hidden">
         
         {/* Cabecera Superior: Píldora Naranja de Trivias en Curso */}
@@ -419,6 +423,7 @@ export default function TvPage() {
           </div>
         )}
       </section>
+      )}
     </main>
   );
 }

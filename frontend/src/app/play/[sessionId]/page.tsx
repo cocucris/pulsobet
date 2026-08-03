@@ -3,12 +3,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSocket } from '@/hooks/useSocket';
 import { useSessionStore } from '@/store/useSessionStore';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/config/api';
+import { CardMode } from './components/CardMode';
 
 export default function PlayPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const sessionId = params.sessionId as string;
+  const tableNumber = searchParams.get('mesa') || undefined;
 
   const [nickname, setNickname] = useState('');
   const [token, setToken] = useState<string | null>(null);
@@ -387,7 +390,12 @@ export default function PlayPage() {
         )}
       </section>
 
-      {/* Contenido Dinámico: Trivias (pestañas Jugar / Resultados) */}
+      {/* Contenido Dinámico: MODO FICHAJE o MODO PARTIDO (trivias) */}
+      {snapshot?.mode === 'CARDS' ? (
+        <div className="w-full my-2 flex flex-col items-center justify-center">
+          <CardMode sessionId={sessionId} playerId={playerId} tableNumber={tableNumber} />
+        </div>
+      ) : (
       <div className="w-full my-2 flex flex-col items-center justify-center">
         {/* Toggle principal: Jugar vs Resultados */}
         {(allActiveQuestions.length > 0 || (snapshot?.resolvedTrivias || []).length > 0) && (
@@ -522,6 +530,7 @@ export default function PlayPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Banner de Feedback del Canje */}
       {claimFeedback && (

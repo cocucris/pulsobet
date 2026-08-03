@@ -103,6 +103,7 @@ export declare class BarController {
                 barId: string;
                 matchId: string | null;
                 status: import("@prisma/client").$Enums.SessionStatus;
+                mode: string;
                 date: Date;
                 isActive: boolean;
             };

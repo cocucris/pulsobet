@@ -198,10 +198,78 @@ let RedisSessionCacheService = RedisSessionCacheService_1 = class RedisSessionCa
         try {
             if (!this.client)
                 return;
-            await this.client.del(`session:${sessionId}:match`, `session:${sessionId}:trivias`, `session:${sessionId}:trivias_resolved`, `session:${sessionId}:event_number`, `session:${sessionId}:version`, `session:${sessionId}:connected`);
+            await this.client.del(`session:${sessionId}:match`, `session:${sessionId}:trivias`, `session:${sessionId}:trivias_resolved`, `session:${sessionId}:event_number`, `session:${sessionId}:version`, `session:${sessionId}:connected`, `session:${sessionId}:card_active`, `session:${sessionId}:cards_history`, `session:${sessionId}:mode`);
         }
         catch (e) {
             this.logger.warn(`Redis fallback on resetSessionState: ${e.message}`);
+        }
+    }
+    async getMode(sessionId) {
+        try {
+            if (!this.client)
+                return null;
+            return await this.client.get(`session:${sessionId}:mode`);
+        }
+        catch (e) {
+            return null;
+        }
+    }
+    async setMode(sessionId, mode) {
+        try {
+            if (!this.client)
+                return;
+            await this.client.set(`session:${sessionId}:mode`, mode);
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on setMode: ${e.message}`);
+        }
+    }
+    async getActiveCard(sessionId) {
+        try {
+            if (!this.client)
+                return null;
+            const data = await this.client.get(`session:${sessionId}:card_active`);
+            return data ? JSON.parse(data) : null;
+        }
+        catch (e) {
+            return null;
+        }
+    }
+    async setActiveCard(sessionId, card) {
+        try {
+            if (!this.client)
+                return;
+            await this.client.set(`session:${sessionId}:card_active`, JSON.stringify(card));
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on setActiveCard: ${e.message}`);
+        }
+    }
+    async getCardsHistory(sessionId) {
+        try {
+            if (!this.client)
+                return [];
+            const data = await this.client.get(`session:${sessionId}:cards_history`);
+            return data ? JSON.parse(data) : [];
+        }
+        catch (e) {
+            return [];
+        }
+    }
+    async addCardToHistory(sessionId, card) {
+        try {
+            if (!this.client)
+                return;
+            const history = await this.getCardsHistory(sessionId);
+            const idx = history.findIndex((c) => c.id === card.id);
+            if (idx >= 0)
+                history[idx] = card;
+            else
+                history.push(card);
+            await this.client.set(`session:${sessionId}:cards_history`, JSON.stringify(history));
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on addCardToHistory: ${e.message}`);
         }
     }
     async setRewards(barId, rewards) {

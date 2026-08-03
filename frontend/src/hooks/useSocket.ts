@@ -132,6 +132,11 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       'REWARD_RESERVED',
       'REWARD_DELIVERED',
       'SESSION_RESET',
+      'SESSION_MODE_CHANGED',
+      'CARD_SUBMITTED',
+      'CARD_PUBLISHED',
+      'CARD_VOTE_UPDATED',
+      'CARD_CLOSED',
       // compatibilidad
       'leaderboard_update',
       'match_score_update',

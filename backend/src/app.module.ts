@@ -8,9 +8,10 @@ import { LiveModule } from './live/live.module';
 import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { SessionModule } from './session/session.module';
+import { CardsModule } from './cards/cards.module';
 
 @Module({
-  imports: [PrismaModule, BarModule, MatchModule, LiveModule, AuthModule, RedisModule, SessionModule],
+  imports: [PrismaModule, BarModule, MatchModule, LiveModule, AuthModule, RedisModule, SessionModule, CardsModule],
   controllers: [AppController],
   providers: [AppService],
 })

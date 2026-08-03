@@ -184,6 +184,70 @@ let SocketDispatcher = SocketDispatcher_1 = class SocketDispatcher {
             this.logger.error(`Error en handleSessionReset: ${e.message}`);
         }
     }
+    handleCardSubmitted(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast CARD_SUBMITTED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'CARD_SUBMITTED', {
+                card: event.card,
+                pendingCount: event.pendingCount,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleCardSubmitted: ${e.message}`);
+        }
+    }
+    handleCardPublished(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast CARD_PUBLISHED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'CARD_PUBLISHED', {
+                card: event.card,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleCardPublished: ${e.message}`);
+        }
+    }
+    handleCardVoteUpdated(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast CARD_VOTE_UPDATED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'CARD_VOTE_UPDATED', {
+                cardId: event.cardId,
+                counts: event.counts,
+                totalVotes: event.totalVotes,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleCardVoteUpdated: ${e.message}`);
+        }
+    }
+    handleCardClosed(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast CARD_CLOSED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'CARD_CLOSED', {
+                cardId: event.cardId,
+                card: event.card,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleCardClosed: ${e.message}`);
+        }
+    }
+    handleSessionModeChanged(event) {
+        try {
+            this.logger.log(`[Dispatcher] Broadcast SESSION_MODE_CHANGED a sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'SESSION_MODE_CHANGED', {
+                mode: event.mode,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handleSessionModeChanged: ${e.message}`);
+        }
+    }
 };
 exports.SocketDispatcher = SocketDispatcher;
 __decorate([
@@ -258,6 +322,36 @@ __decorate([
     __metadata("design:paramtypes", [session_events_1.SessionResetEvent]),
     __metadata("design:returntype", void 0)
 ], SocketDispatcher.prototype, "handleSessionReset", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('card.submitted'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.CardSubmittedEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleCardSubmitted", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('card.published'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.CardPublishedEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleCardPublished", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('card.vote.updated'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.CardVoteUpdatedEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleCardVoteUpdated", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('card.closed'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.CardClosedEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleCardClosed", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('session.mode.changed'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [session_events_1.SessionModeChangedEvent]),
+    __metadata("design:returntype", void 0)
+], SocketDispatcher.prototype, "handleSessionModeChanged", null);
 exports.SocketDispatcher = SocketDispatcher = SocketDispatcher_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [live_gateway_1.LiveGateway])
