@@ -14,6 +14,9 @@ export declare class BarController {
         stock: number;
     }[]>;
     getPlayerProfile(playerId: string): Promise<{
+        session: {
+            isActive: boolean;
+        };
         claims: ({
             reward: {
                 id: string;

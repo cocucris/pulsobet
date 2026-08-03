@@ -190,12 +190,15 @@ export class BarService {
   }
 
   /**
-   * Obtiene la información del jugador, sus puntos acumulados y sus códigos de canje
+   * Obtiene la información del jugador, sus puntos acumulados y sus códigos de canje.
+   * Si la sesión del jugador fue archivada (cierre de noche), devuelve 404 para que
+   * el celular limpie su estado y vuelva al registro con 0 puntos.
    */
   async getPlayerProfile(playerId: string) {
     const player = await this.prisma.player.findUnique({
       where: { id: playerId },
       include: {
+        session: { select: { isActive: true } },
         claims: {
           include: { reward: true },
           orderBy: { createdAt: 'desc' },
@@ -203,7 +206,7 @@ export class BarService {
       },
     });
 
-    if (!player) {
+    if (!player || !player.session.isActive) {
       throw new NotFoundException('Jugador no encontrado.');
     }
 

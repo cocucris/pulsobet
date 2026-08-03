@@ -101,6 +101,9 @@ export declare class BarService {
         streakCount: number;
     }>;
     getPlayerProfile(playerId: string): Promise<{
+        session: {
+            isActive: boolean;
+        };
         claims: ({
             reward: {
                 id: string;

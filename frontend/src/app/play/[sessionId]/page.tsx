@@ -39,6 +39,15 @@ export default function PlayPage() {
     }
   }, [sessionId]);
 
+  // Validar al montar que el jugador guardado sigue vigente (si hubo cierre de
+  // noche, su sesión quedó archivada → el perfil da 404 y se limpia todo)
+  useEffect(() => {
+    if (!loading && playerId) {
+      refreshPlayerData(playerId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   // Función para actualizar perfil y puntos del jugador (por ID o por Apodo)
   const refreshPlayerData = useCallback(async (pId?: string | null, name?: string | null) => {
     try {
@@ -60,6 +69,7 @@ export default function PlayPage() {
           }
         }
       } else if (res.status === 404 || res.status === 401) {
+        // Jugador archivado (cierre de noche) o inválido: limpiar TODO el estado
         if (typeof window !== 'undefined') {
           localStorage.removeItem(`pulsobet_player_token:${sessionId}`);
           localStorage.removeItem(`pulsobet_player_id:${sessionId}`);
@@ -67,6 +77,9 @@ export default function PlayPage() {
         }
         setToken(null);
         setPlayerId(null);
+        setTotalPoints(0);
+        setClaims([]);
+        setAnsweredQuestionIds([]);
       }
     } catch (err) {
       console.error('Error al actualizar datos del jugador:', err);
@@ -120,7 +133,6 @@ export default function PlayPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myPlayer]);
-
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<string[]>([]);
   const [selectedTriviaIndex, setSelectedTriviaIndex] = useState(0);
   const [voteError, setVoteError] = useState<string | null>(null);

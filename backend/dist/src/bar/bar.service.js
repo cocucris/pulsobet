@@ -140,13 +140,14 @@ let BarService = class BarService {
         const player = await this.prisma.player.findUnique({
             where: { id: playerId },
             include: {
+                session: { select: { isActive: true } },
                 claims: {
                     include: { reward: true },
                     orderBy: { createdAt: 'desc' },
                 },
             },
         });
-        if (!player) {
+        if (!player || !player.session.isActive) {
             throw new common_1.NotFoundException('Jugador no encontrado.');
         }
         return player;
