@@ -114,19 +114,14 @@ export class CardsService {
     if (!card) throw new NotFoundException('Ficha no encontrada');
     if (card.status !== 'PENDING') throw new BadRequestException('La ficha ya fue procesada');
 
-    // Si había otra ficha activa, pasa al historial automáticamente
-    const currentActive = await this.sessionCache.getActiveCard(card.sessionId);
-    if (currentActive && currentActive.id !== cardId) {
-      await this.addCardToHistory(currentActive);
-    }
-
     const approved = await this.prisma.profileCard.update({
       where: { id: cardId },
       data: { status: 'APPROVED' },
     });
 
     const enriched = await this.enrichCard(approved);
-    await this.sessionCache.setActiveCard(card.sessionId, enriched);
+    // Agregar a la lista de fichas activas (múltiples fichas simultáneas)
+    await this.sessionCache.addActiveCard(card.sessionId, enriched);
 
     const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
     this.eventEmitter.emit('card.published', new CardPublishedEvent(card.sessionId, enriched, eventNumber));
@@ -143,10 +138,11 @@ export class CardsService {
       data: { status: 'REJECTED' },
     });
 
-    // Si era la ficha activa, se limpia de las pantallas
-    const currentActive = await this.sessionCache.getActiveCard(card.sessionId);
-    if (currentActive?.id === cardId) {
-      await this.sessionCache.setActiveCard(card.sessionId, null);
+    // Si estaba entre las activas, se quita de las pantallas
+    const activeCards = await this.sessionCache.getActiveCards(card.sessionId);
+    const wasActive = activeCards.some((c) => c.id === cardId);
+    if (wasActive) {
+      await this.sessionCache.removeActiveCard(card.sessionId, cardId);
       const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
       this.eventEmitter.emit('card.closed', new CardClosedEvent(card.sessionId, cardId, null, eventNumber));
     }
@@ -161,10 +157,8 @@ export class CardsService {
     const enriched = await this.enrichCard(card);
     await this.addCardToHistory(enriched);
 
-    const currentActive = await this.sessionCache.getActiveCard(card.sessionId);
-    if (currentActive?.id === cardId) {
-      await this.sessionCache.setActiveCard(card.sessionId, null);
-    }
+    // Quitar de las fichas activas
+    await this.sessionCache.removeActiveCard(card.sessionId, cardId);
 
     const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
     this.eventEmitter.emit('card.closed', new CardClosedEvent(card.sessionId, cardId, enriched, eventNumber));
@@ -186,9 +180,10 @@ export class CardsService {
       throw new BadRequestException('Esta ficha no está abierta a votación');
     }
 
-    // La votación solo vale sobre la ficha activa actual
-    const active = await this.sessionCache.getActiveCard(card.sessionId);
-    if (!active || active.id !== cardId) {
+    // La votación vale sobre cualquier ficha activa (múltiples fichas simultáneas)
+    const activeCards = await this.sessionCache.getActiveCards(card.sessionId);
+    const isActive = activeCards.some((c) => c.id === cardId);
+    if (!isActive) {
       throw new BadRequestException('La votación de esta ficha ya fue cerrada');
     }
 
@@ -199,7 +194,8 @@ export class CardsService {
     });
 
     const enriched = await this.enrichCard(card);
-    await this.sessionCache.setActiveCard(card.sessionId, enriched);
+    // Actualizar la ficha en la lista de activas
+    await this.sessionCache.addActiveCard(card.sessionId, enriched);
 
     const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
     this.eventEmitter.emit(

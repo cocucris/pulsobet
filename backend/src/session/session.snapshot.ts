@@ -70,7 +70,7 @@ export interface SessionSnapshot {
 
   mode: string;
 
-  activeCard: {
+  activeCards: {
     id: string;
     sessionId: string;
     tableNumber: string | null;
@@ -86,13 +86,13 @@ export interface SessionSnapshot {
     createdAt: Date;
     counts: { interested: number; introduce: number; pass: number };
     totalVotes: number;
-  } | null;
+  }[];
 
   cardsHistory: any[];
 
   pendingCardsCount: number;
 
-  myCardVote: string | null;
+  myCardVotes: Record<string, string>;
 
   connectionStatus: 'connected';
 }

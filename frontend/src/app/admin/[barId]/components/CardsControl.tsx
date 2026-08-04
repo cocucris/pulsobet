@@ -6,7 +6,7 @@ import { API_URL } from '@/config/api';
 
 export function CardsControl({ sessionId }: { sessionId: string }) {
   const mode = useSessionStore((s) => s.snapshot?.mode) || 'MATCH';
-  const activeCard = useSessionStore((s) => s.snapshot?.activeCard);
+  const activeCards = useSessionStore((s) => s.snapshot?.activeCards) || [];
   const cardsHistory = useSessionStore((s) => s.snapshot?.cardsHistory) || [];
   const pendingCardsCount = useSessionStore((s) => s.snapshot?.pendingCardsCount) || 0;
 
@@ -118,47 +118,54 @@ export function CardsControl({ sessionId }: { sessionId: string }) {
             </p>
           )}
 
-          {/* FICHA ACTIVA EN VOTACIÓN */}
-          {activeCard && (
-            <div className="bg-slate-900 p-4 rounded-xl border border-pink-500/50">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-black uppercase text-pink-400 tracking-wider">
-                  💘 Ficha Activa en Votación • {activeCard.totalVotes} votos
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    disabled={isLoading}
-                    onClick={() => handleAction(activeCard.id, 'close')}
-                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg uppercase tracking-wider"
-                  >
-                    ⏹️ Cerrar Votación
-                  </button>
-                  <button
-                    disabled={isLoading}
-                    onClick={() => handleAction(activeCard.id, 'reject')}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-[10px] rounded-lg uppercase tracking-wider"
-                  >
-                    🚫 Anular
-                  </button>
+          {/* FICHAS ACTIVAS EN VOTACIÓN */}
+          {activeCards.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <span className="text-xs font-black uppercase text-pink-400 tracking-wider">
+                💘 Fichas Activas en Votación ({activeCards.length})
+              </span>
+              {activeCards.map((card) => (
+                <div key={card.id} className="bg-slate-900 p-4 rounded-xl border border-pink-500/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-black uppercase text-pink-400 tracking-wider">
+                      {card.totalVotes} votos
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        disabled={isLoading}
+                        onClick={() => handleAction(card.id, 'close')}
+                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] rounded-lg uppercase tracking-wider"
+                      >
+                        ⏹️ Cerrar
+                      </button>
+                      <button
+                        disabled={isLoading}
+                        onClick={() => handleAction(card.id, 'reject')}
+                        className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-black text-[10px] rounded-lg uppercase tracking-wider"
+                      >
+                        🚫 Anular
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
+                      {card.photoUrl ? (
+                        <img src={`${API_URL}${card.photoUrl}`} alt={card.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl">👤</div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">
+                        {card.name} {card.age ? `(${card.age})` : ''} {card.tableNumber ? `• Mesa ${card.tableNumber}` : ''}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        😍 {card.counts.interested} · 🤝 {card.counts.introduce} · ✋ {card.counts.pass}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
-                  {activeCard.photoUrl ? (
-                    <img src={`${API_URL}${activeCard.photoUrl}`} alt={activeCard.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xl">👤</div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-white">
-                    {activeCard.name} {activeCard.age ? `(${activeCard.age})` : ''} {activeCard.tableNumber ? `• Mesa ${activeCard.tableNumber}` : ''}
-                  </p>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    😍 {activeCard.counts.interested} · 🤝 {activeCard.counts.introduce} · ✋ {activeCard.counts.pass}
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
           )}
 

@@ -182,6 +182,7 @@ export class RedisSessionCacheService {
         `session:${sessionId}:version`,
         `session:${sessionId}:connected`,
         `session:${sessionId}:card_active`,
+        `session:${sessionId}:cards_active`,
         `session:${sessionId}:cards_history`,
         `session:${sessionId}:mode`,
       );
@@ -226,6 +227,51 @@ export class RedisSessionCacheService {
       await this.client.set(`session:${sessionId}:card_active`, JSON.stringify(card));
     } catch (e) {
       this.logger.warn(`Redis fallback on setActiveCard: ${e.message}`);
+    }
+  }
+
+  // ─── MÚLTIPLES FICHAS ACTIVAS ────────────────────────────────────────
+
+  async getActiveCards(sessionId: string): Promise<any[]> {
+    try {
+      if (!this.client) return [];
+      const data = await this.client.get(`session:${sessionId}:cards_active`);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async setActiveCards(sessionId: string, cards: any[]): Promise<void> {
+    try {
+      if (!this.client) return;
+      await this.client.set(`session:${sessionId}:cards_active`, JSON.stringify(cards));
+    } catch (e) {
+      this.logger.warn(`Redis fallback on setActiveCards: ${e.message}`);
+    }
+  }
+
+  async addActiveCard(sessionId: string, card: any): Promise<void> {
+    try {
+      if (!this.client) return;
+      const cards = await this.getActiveCards(sessionId);
+      const idx = cards.findIndex((c) => c.id === card.id);
+      if (idx >= 0) cards[idx] = card;
+      else cards.push(card);
+      await this.setActiveCards(sessionId, cards);
+    } catch (e) {
+      this.logger.warn(`Redis fallback on addActiveCard: ${e.message}`);
+    }
+  }
+
+  async removeActiveCard(sessionId: string, cardId: string): Promise<void> {
+    try {
+      if (!this.client) return;
+      const cards = await this.getActiveCards(sessionId);
+      const filtered = cards.filter((c) => c.id !== cardId);
+      await this.setActiveCards(sessionId, filtered);
+    } catch (e) {
+      this.logger.warn(`Redis fallback on removeActiveCard: ${e.message}`);
     }
   }
 

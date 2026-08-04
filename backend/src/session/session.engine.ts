@@ -214,37 +214,32 @@ export class SessionEngine {
     }
     const sessionMode: string = mode;
 
-    let activeCard = await this.sessionCache.getActiveCard(actualSessionId);
-    if (!activeCard) {
-      const dbCard = await this.prisma.profileCard.findFirst({
+    let activeCards = await this.sessionCache.getActiveCards(actualSessionId);
+    if (activeCards.length === 0) {
+      // Reconstruir desde DB: todas las aprobadas son activas
+      const dbCards = await this.prisma.profileCard.findMany({
         where: { sessionId: actualSessionId, status: 'APPROVED' },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
       });
-      if (dbCard) {
-        // Solo es "activa" si es la última aprobada (las anteriores ya pasaron al historial)
-        const latestApproved = await this.prisma.profileCard.findFirst({
-          where: { sessionId: actualSessionId, status: 'APPROVED' },
-          orderBy: { createdAt: 'desc' },
-        });
-        if (latestApproved && latestApproved.id === dbCard.id) {
-          activeCard = await this.enrichCardForSnapshot(dbCard);
-          await this.sessionCache.setActiveCard(actualSessionId, activeCard);
-        }
+      if (dbCards.length > 0) {
+        activeCards = await Promise.all(dbCards.map((c) => this.enrichCardForSnapshot(c)));
+        await this.sessionCache.setActiveCards(actualSessionId, activeCards);
       }
     }
 
     let cardsHistory = await this.sessionCache.getCardsHistory(actualSessionId);
     if (cardsHistory.length === 0) {
-      // Reconstruir historial: aprobadas que no son la activa
-      const approvedCards = await this.prisma.profileCard.findMany({
-        where: { sessionId: actualSessionId, status: 'APPROVED' },
+      // Reconstruir historial: fichas cerradas (no están en activas ni pendientes)
+      const closedCards = await this.prisma.profileCard.findMany({
+        where: {
+          sessionId: actualSessionId,
+          status: 'APPROVED',
+          id: { notIn: activeCards.map((c) => c.id) },
+        },
         orderBy: { createdAt: 'asc' },
       });
-      const historyCards = activeCard
-        ? approvedCards.filter((c) => c.id !== activeCard.id)
-        : approvedCards.slice(0, -1);
-      if (historyCards.length > 0) {
-        cardsHistory = await Promise.all(historyCards.map((c) => this.enrichCardForSnapshot(c)));
+      if (closedCards.length > 0) {
+        cardsHistory = await Promise.all(closedCards.map((c) => this.enrichCardForSnapshot(c)));
         for (const c of cardsHistory) {
           await this.sessionCache.addCardToHistory(actualSessionId, c);
         }
@@ -255,13 +250,16 @@ export class SessionEngine {
       where: { sessionId: actualSessionId, status: 'PENDING' },
     });
 
-    // Voto del jugador actual en la ficha activa
-    let myCardVote: string | null = null;
-    if (playerId && activeCard) {
-      const vote = await this.prisma.cardVote.findUnique({
-        where: { cardId_playerId: { cardId: activeCard.id, playerId } },
+    // Votos del jugador actual en todas las fichas activas
+    let myCardVotes: Record<string, string> = {};
+    if (playerId && activeCards.length > 0) {
+      const votes = await this.prisma.cardVote.findMany({
+        where: {
+          playerId,
+          cardId: { in: activeCards.map((c) => c.id) },
+        },
       });
-      myCardVote = vote?.choice || null;
+      myCardVotes = Object.fromEntries(votes.map((v) => [v.cardId, v.choice]));
     }
 
     return {
@@ -278,10 +276,10 @@ export class SessionEngine {
       connectedPlayersCount,
       rewards: rewards || [],
       mode: sessionMode,
-      activeCard,
+      activeCards,
       cardsHistory,
       pendingCardsCount,
-      myCardVote,
+      myCardVotes,
       barSettings: {
         name: session.bar?.name || 'PulsoBet Bar',
         slug: session.bar?.slug || 'pulsobet',

@@ -18,17 +18,19 @@ interface CardModeProps {
 }
 
 export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
-  const activeCard = useSessionStore((s) => s.snapshot?.activeCard);
+  const activeCards = useSessionStore((s) => s.snapshot?.activeCards) || [];
   const cardsHistory = useSessionStore((s) => s.snapshot?.cardsHistory) || [];
-  const myCardVote = useSessionStore((s) => s.snapshot?.myCardVote);
+  const myCardVotes = useSessionStore((s) => s.snapshot?.myCardVotes) || {};
 
+  const [selectedCardIndex, setSelectedCardIndex] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [formSent, setFormSent] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
-  const [localVote, setLocalVote] = useState<string | null>(null);
+  const [localVotes, setLocalVotes] = useState<Record<string, string>>({});
 
-  const effectiveVote = localVote || myCardVote;
+  const activeCard = activeCards[selectedCardIndex] || null;
+  const effectiveVote = activeCard ? localVotes[activeCard.id] || myCardVotes[activeCard.id] : null;
 
   const handleVote = async (choice: 'INTERESTED' | 'INTRODUCE' | 'PASS') => {
     if (!activeCard || !playerId || isVoting) return;
@@ -49,7 +51,7 @@ export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
         return;
       }
 
-      setLocalVote(choice);
+      setLocalVotes((prev) => ({ ...prev, [activeCard.id]: choice }));
     } catch (err) {
       console.error('Error votando ficha:', err);
       setVoteError('Error de conexión. Intentá de nuevo.');
@@ -83,6 +85,25 @@ export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
           <p className="text-xs font-bold text-emerald-400">
             ¡Ficha enviada! Aparecerá en pantalla cuando el bar la apruebe ✅
           </p>
+        </div>
+      )}
+
+      {/* TABS DE FICHAS ACTIVAS */}
+      {activeCards.length > 1 && (
+        <div className="w-full flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          {activeCards.map((card, idx) => (
+            <button
+              key={card.id}
+              onClick={() => setSelectedCardIndex(idx)}
+              className={`flex-shrink-0 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${
+                idx === selectedCardIndex
+                  ? 'bg-pink-500 text-white border-2 border-pink-400'
+                  : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:border-slate-600'
+              }`}
+            >
+              Ficha {idx + 1}
+            </button>
+          ))}
         </div>
       )}
 

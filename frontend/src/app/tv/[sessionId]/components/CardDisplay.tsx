@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useSessionStore } from '@/store/useSessionStore';
 import { API_URL } from '@/config/api';
 
@@ -10,8 +11,28 @@ const VOTE_PANEL = [
 ] as const;
 
 export function CardDisplay() {
-  const activeCard = useSessionStore((s) => s.snapshot?.activeCard);
+  const activeCards = useSessionStore((s) => s.snapshot?.activeCards) || [];
   const cardsHistory = useSessionStore((s) => s.snapshot?.cardsHistory) || [];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Rotación automática cada 20 segundos
+  useEffect(() => {
+    if (activeCards.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % activeCards.length);
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [activeCards.length]);
+
+  // Resetear índice si cambia el número de fichas
+  useEffect(() => {
+    if (currentIndex >= activeCards.length) {
+      setCurrentIndex(0);
+    }
+  }, [activeCards.length, currentIndex]);
+
+  const activeCard = activeCards[currentIndex] || null;
 
   const pct = (n: number) =>
     activeCard && activeCard.totalVotes > 0 ? Math.round((n / activeCard.totalVotes) * 100) : 0;
@@ -25,9 +46,16 @@ export function CardDisplay() {
           <span className="h-2.5 w-2.5 rounded-full bg-slate-950 animate-ping" />
           <span className="text-xs bg-slate-950 text-pink-400 px-2 py-0.5 rounded-full font-mono font-bold">💘 MODO FICHAJE</span>
         </div>
-        <span className="text-xs font-mono font-black uppercase bg-slate-950 text-amber-400 px-3 py-1 rounded-full border border-amber-400/30">
-          MIÉRCOLES DE FICHAJE
-        </span>
+        <div className="flex items-center gap-2">
+          {activeCards.length > 1 && (
+            <span className="text-xs font-mono font-black uppercase bg-slate-950 text-amber-400 px-3 py-1 rounded-full border border-amber-400/30">
+              FICHA {currentIndex + 1} DE {activeCards.length}
+            </span>
+          )}
+          <span className="text-xs font-mono font-black uppercase bg-slate-950 text-amber-400 px-3 py-1 rounded-full border border-amber-400/30">
+            MIÉRCOLES DE FICHAJE
+          </span>
+        </div>
       </div>
 
       {activeCard ? (

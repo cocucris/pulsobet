@@ -73,7 +73,7 @@ export interface SessionSnapshot {
 
   mode: string;
 
-  activeCard: {
+  activeCards: {
     id: string;
     sessionId: string;
     tableNumber: string | null;
@@ -89,13 +89,13 @@ export interface SessionSnapshot {
     createdAt: string;
     counts: { interested: number; introduce: number; pass: number };
     totalVotes: number;
-  } | null;
+  }[];
 
   cardsHistory: any[];
 
   pendingCardsCount: number;
 
-  myCardVote: string | null;
+  myCardVotes: Record<string, string>;
 
   connectionStatus: 'connected';
 }
@@ -351,10 +351,10 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 myPlayer: null,
                 connectedPlayersCount: 0,
                 mode: 'MATCH',
-                activeCard: null,
+                activeCards: [],
                 cardsHistory: [],
                 pendingCardsCount: 0,
-                myCardVote: null,
+                myCardVotes: {},
               }
             : snapshot,
           lastEventNumber: nextEventNumber,
@@ -378,40 +378,48 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         });
         break;
 
-      case 'CARD_PUBLISHED':
+      case 'CARD_PUBLISHED': {
+        const newCard = payload?.card;
+        if (!newCard) break;
+        const existing = snapshot.activeCards.findIndex((c) => c.id === newCard.id);
+        const updatedCards =
+          existing >= 0
+            ? snapshot.activeCards.map((c, i) => (i === existing ? newCard : c))
+            : [...snapshot.activeCards, newCard];
         set({
           snapshot: {
             ...snapshot,
-            activeCard: payload?.card || null,
-            myCardVote: null,
+            activeCards: updatedCards,
             pendingCardsCount: Math.max(0, snapshot.pendingCardsCount - 1),
           },
           lastEventNumber: nextEventNumber,
         });
         break;
+      }
 
-      case 'CARD_VOTE_UPDATED':
-        if (snapshot.activeCard && snapshot.activeCard.id === payload?.cardId) {
+      case 'CARD_VOTE_UPDATED': {
+        const cardIndex = snapshot.activeCards.findIndex((c) => c.id === payload?.cardId);
+        if (cardIndex >= 0) {
+          const updatedCards = snapshot.activeCards.map((c, i) =>
+            i === cardIndex ? { ...c, counts: payload.counts, totalVotes: payload.totalVotes } : c,
+          );
           set({
             snapshot: {
               ...snapshot,
-              activeCard: {
-                ...snapshot.activeCard,
-                counts: payload.counts,
-                totalVotes: payload.totalVotes,
-              },
+              activeCards: updatedCards,
             },
             lastEventNumber: nextEventNumber,
           });
         }
         break;
+      }
 
       case 'CARD_CLOSED': {
         const closedCard = payload?.card;
         set({
           snapshot: {
             ...snapshot,
-            activeCard: snapshot.activeCard?.id === payload?.cardId ? null : snapshot.activeCard,
+            activeCards: snapshot.activeCards.filter((c) => c.id !== payload?.cardId),
             cardsHistory:
               closedCard && !snapshot.cardsHistory.some((c: any) => c.id === closedCard.id)
                 ? [...snapshot.cardsHistory, closedCard]
