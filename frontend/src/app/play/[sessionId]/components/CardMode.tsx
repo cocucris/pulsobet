@@ -19,7 +19,6 @@ interface CardModeProps {
 
 export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
   const activeCards = useSessionStore((s) => s.snapshot?.activeCards) || [];
-  const cardsHistory = useSessionStore((s) => s.snapshot?.cardsHistory) || [];
   const myCardVotes = useSessionStore((s) => s.snapshot?.myCardVotes) || {};
 
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
@@ -239,37 +238,6 @@ export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
       >
         📇 Cargar la Ficha de un Amigo/a
       </button>
-
-      {/* Historial de fichas cerradas */}
-      {cardsHistory.length > 0 && (
-        <section className="w-full mt-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
-            📋 Fichas de la noche ({cardsHistory.length})
-          </h3>
-          <div className="flex flex-col gap-2">
-            {cardsHistory.map((card: any) => {
-              const total = card.totalVotes || 0;
-              const winnerPct = total > 0 ? Math.round((card.counts.interested / total) * 100) : 0;
-              return (
-                <div key={card.id} className="p-3 rounded-xl border bg-slate-900/60 border-slate-800 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
-                    {card.photoUrl ? (
-                      <img src={`${API_URL}${card.photoUrl}`} alt={card.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg">👤</div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-white">{card.name}</p>
-                    <p className="text-[10px] text-slate-500 font-mono">{total} votos</p>
-                  </div>
-                  <span className="text-[11px] font-black text-emerald-400">😍 {winnerPct}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
