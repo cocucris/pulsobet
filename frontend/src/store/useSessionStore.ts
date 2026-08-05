@@ -97,6 +97,29 @@ export interface SessionSnapshot {
 
   myCardVotes: Record<string, string>;
 
+  votingClosed: boolean;
+
+  votingResults: {
+    topInterested: {
+      id: string;
+      name: string;
+      photoUrl: string | null;
+      tableNumber: string | null;
+      percentage: number;
+      votes: number;
+      totalVotes: number;
+    }[];
+    topIntroduce: {
+      id: string;
+      name: string;
+      photoUrl: string | null;
+      tableNumber: string | null;
+      percentage: number;
+      votes: number;
+      totalVotes: number;
+    }[];
+  } | null;
+
   connectionStatus: 'connected';
 }
 
@@ -355,6 +378,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 cardsHistory: [],
                 pendingCardsCount: 0,
                 myCardVotes: {},
+                votingClosed: false,
+                votingResults: null,
               }
             : snapshot,
           lastEventNumber: nextEventNumber,
@@ -429,6 +454,19 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         });
         break;
       }
+
+      case 'VOTING_CLOSED':
+        // Cierre de votación general: limpiar fichas activas y guardar resultados
+        set({
+          snapshot: {
+            ...snapshot,
+            votingClosed: true,
+            votingResults: payload?.results || null,
+            activeCards: [],
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
 
       default:
         break;

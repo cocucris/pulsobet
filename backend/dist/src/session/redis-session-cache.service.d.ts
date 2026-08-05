@@ -24,6 +24,10 @@ export declare class RedisSessionCacheService {
     setMode(sessionId: string, mode: string): Promise<void>;
     getActiveCard(sessionId: string): Promise<any | null>;
     setActiveCard(sessionId: string, card: any): Promise<void>;
+    getActiveCards(sessionId: string): Promise<any[]>;
+    setActiveCards(sessionId: string, cards: any[]): Promise<void>;
+    addActiveCard(sessionId: string, card: any): Promise<void>;
+    removeActiveCard(sessionId: string, cardId: string): Promise<void>;
     getCardsHistory(sessionId: string): Promise<any[]>;
     addCardToHistory(sessionId: string, card: any): Promise<void>;
     setRewards(barId: string, rewards: any[]): Promise<void>;

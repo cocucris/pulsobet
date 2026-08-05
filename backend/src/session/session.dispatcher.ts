@@ -20,6 +20,7 @@ import {
   CardVoteUpdatedEvent,
   CardClosedEvent,
   SessionModeChangedEvent,
+  VotingClosedEvent,
 } from './session.events';
 
 @Injectable()
@@ -269,6 +270,19 @@ export class SocketDispatcher {
       });
     } catch (e) {
       this.logger.error(`Error en handleSessionModeChanged: ${e.message}`);
+    }
+  }
+
+  @OnEvent('voting.closed')
+  handleVotingClosed(event: VotingClosedEvent) {
+    try {
+      this.logger.log(`[Dispatcher] Broadcast VOTING_CLOSED a sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'VOTING_CLOSED', {
+        results: event.results,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handleVotingClosed: ${e.message}`);
     }
   }
 }

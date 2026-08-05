@@ -13,6 +13,8 @@ const VOTE_PANEL = [
 export function CardDisplay() {
   const activeCards = useSessionStore((s) => s.snapshot?.activeCards) || [];
   const cardsHistory = useSessionStore((s) => s.snapshot?.cardsHistory) || [];
+  const votingClosed = useSessionStore((s) => s.snapshot?.votingClosed) || false;
+  const votingResults = useSessionStore((s) => s.snapshot?.votingResults) || null;
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -47,7 +49,7 @@ export function CardDisplay() {
           <span className="text-xs bg-slate-950 text-pink-400 px-2 py-0.5 rounded-full font-mono font-bold">💘 MODO FICHAJE</span>
         </div>
         <div className="flex items-center gap-2">
-          {activeCards.length > 1 && (
+          {activeCards.length > 1 && !votingClosed && (
             <span className="text-xs font-mono font-black uppercase bg-slate-950 text-amber-400 px-3 py-1 rounded-full border border-amber-400/30">
               FICHA {currentIndex + 1} DE {activeCards.length}
             </span>
@@ -58,7 +60,124 @@ export function CardDisplay() {
         </div>
       </div>
 
-      {activeCard ? (
+      {/* PANTALLA DE RESULTADOS FINALES */}
+      {votingClosed && votingResults ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-black text-amber-400 uppercase tracking-wider mb-2">
+              🏆 RESUMEN DE FICHÁJE - VOTACIÓN CERRADA
+            </h1>
+            <p className="text-sm text-slate-300 uppercase tracking-widest">Resultados Finales del Juego</p>
+          </div>
+
+          <div className="w-full grid grid-cols-2 gap-8">
+            {/* TOP 3 ME INTERESA */}
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">
+                ME INTERESA (❤️)
+              </h2>
+              <div className="flex flex-col gap-3">
+                {votingResults.topInterested.length > 0 ? (
+                  votingResults.topInterested.map((card, idx) => (
+                    <div
+                      key={card.id}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 ${
+                        idx === 0
+                          ? 'bg-gradient-to-r from-amber-500/20 to-amber-400/10 border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]'
+                          : 'bg-slate-900/80 border-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`text-4xl font-black font-mono ${
+                          idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-slate-300' : 'text-amber-700'
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-amber-400/50 bg-slate-800 flex-shrink-0">
+                        {card.photoUrl ? (
+                          <img src={`${API_URL}${card.photoUrl}`} alt={card.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-lg font-black text-white uppercase">{card.name}</p>
+                        {card.tableNumber && (
+                          <p className="text-xs text-amber-400 font-bold">MESA {card.tableNumber}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-black font-mono text-emerald-400">{card.percentage}%</p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {card.votes} de {card.totalVotes} votos
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-slate-500 text-sm py-8">No hubo votos en esta categoría</p>
+                )}
+              </div>
+            </div>
+
+            {/* TOP 3 PRESÉNTAME */}
+            <div className="flex flex-col gap-4">
+              <h2 className="text-xl font-black text-center text-amber-400 uppercase tracking-wider">
+                PRESÉNTAME (🤝)
+              </h2>
+              <div className="flex flex-col gap-3">
+                {votingResults.topIntroduce.length > 0 ? (
+                  votingResults.topIntroduce.map((card, idx) => (
+                    <div
+                      key={card.id}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 ${
+                        idx === 0
+                          ? 'bg-gradient-to-r from-amber-500/20 to-amber-400/10 border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]'
+                          : 'bg-slate-900/80 border-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`text-4xl font-black font-mono ${
+                          idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-slate-300' : 'text-amber-700'
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-amber-400/50 bg-slate-800 flex-shrink-0">
+                        {card.photoUrl ? (
+                          <img src={`${API_URL}${card.photoUrl}`} alt={card.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-2xl">👤</div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-lg font-black text-white uppercase">{card.name}</p>
+                        {card.tableNumber && (
+                          <p className="text-xs text-amber-400 font-bold">MESA {card.tableNumber}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-black font-mono text-amber-400">{card.percentage}%</p>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {card.votes} de {card.totalVotes} votos
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-slate-500 text-sm py-8">No hubo votos en esta categoría</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-center gap-2 bg-slate-900/80 border border-red-500/30 rounded-xl py-2.5 px-6">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="text-[11px] font-black uppercase tracking-widest text-red-400">VOTACIÓN CERRADA</span>
+          </div>
+        </div>
+      ) : activeCard ? (
         <div className="flex-1 flex gap-6">
           {/* Columna central: foto + datos del jugador */}
           <div className="flex-1 flex flex-col items-center gap-4">
@@ -168,7 +287,7 @@ export function CardDisplay() {
       )}
 
       {/* Historial de fichas cerradas */}
-      {cardsHistory.length > 0 && (
+      {cardsHistory.length > 0 && !votingClosed && (
         <div className="mt-4 pt-3 border-t border-slate-800">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
             📋 Fichas de la noche ({cardsHistory.length})

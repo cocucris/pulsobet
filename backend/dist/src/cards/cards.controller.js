@@ -48,6 +48,9 @@ let CardsController = class CardsController {
     close(id) {
         return this.cardsService.closeCard(id);
     }
+    closeAll(dto) {
+        return this.cardsService.closeAllCards(dto.sessionId);
+    }
     vote(id, dto) {
         return this.cardsService.voteCard(id, dto.playerId, dto.choice);
     }
@@ -112,6 +115,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], CardsController.prototype, "close", null);
+__decorate([
+    (0, common_1.Post)('close-all'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], CardsController.prototype, "closeAll", null);
 __decorate([
     (0, common_1.Post)(':id/vote'),
     (0, common_1.UsePipes)(new common_1.ValidationPipe({ whitelist: true })),

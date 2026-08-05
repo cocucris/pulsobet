@@ -152,6 +152,17 @@ export class SessionModeChangedEvent {
   ) {}
 }
 
+export class VotingClosedEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly results: {
+      topInterested: any[];
+      topIntroduce: any[];
+    },
+    public readonly eventNumber: number,
+  ) {}
+}
+
 export class MatchFinishedEvent {
   constructor(
     public readonly sessionId: string,

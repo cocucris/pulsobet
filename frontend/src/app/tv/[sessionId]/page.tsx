@@ -119,33 +119,35 @@ export default function TvPage() {
           </p>
         </div>
 
-        {/* ⚽ MARCADOR EN VIVO / PRE-PARTIDO / FINALIZADO — Hero card prominente */}
-        {displayMatch ? (
-          <div className="bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-500/50 rounded-2xl p-4 shadow-[0_0_30px_rgba(251,191,36,0.15)]">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className={`h-2 w-2 rounded-full ${displayMatch.status === 'LIVE' ? 'bg-red-500 animate-ping' : displayMatch.status === 'FINISHED' ? 'bg-slate-400' : 'bg-amber-400'}`} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
-                {displayMatch.status === 'LIVE' ? 'EN VIVO' : displayMatch.status === 'FINISHED' ? 'RESULTADO FINAL • PARTIDO FINALIZADO' : 'PARTIDO DEL DÍA • PRE-PARTIDO'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-sm font-black text-white text-center leading-tight flex-1">{displayMatch.homeTeam}</span>
-              {displayMatch.status === 'LIVE' || displayMatch.status === 'FINISHED' ? (
-                <span className="text-4xl font-black font-mono text-amber-400 bg-slate-950 px-4 py-2 rounded-xl border border-amber-500/40 shadow-inner mx-1">
-                  {displayMatch.scoreHome} - {displayMatch.scoreAway}
+        {/* ⚽ MARCADOR EN VIVO / PRE-PARTIDO / FINALIZADO — Hero card prominente (solo en modo MATCH) */}
+        {snapshot?.mode !== 'CARDS' && (
+          displayMatch ? (
+            <div className="bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-amber-500/50 rounded-2xl p-4 shadow-[0_0_30px_rgba(251,191,36,0.15)]">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <span className={`h-2 w-2 rounded-full ${displayMatch.status === 'LIVE' ? 'bg-red-500 animate-ping' : displayMatch.status === 'FINISHED' ? 'bg-slate-400' : 'bg-amber-400'}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                  {displayMatch.status === 'LIVE' ? 'EN VIVO' : displayMatch.status === 'FINISHED' ? 'RESULTADO FINAL • PARTIDO FINALIZADO' : 'PARTIDO DEL DÍA • PRE-PARTIDO'}
                 </span>
-              ) : (
-                <span className="text-2xl font-black font-mono text-slate-300 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 shadow-inner mx-1">
-                  VS
-                </span>
-              )}
-              <span className="text-sm font-black text-white text-center leading-tight flex-1">{displayMatch.awayTeam}</span>
+              </div>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-sm font-black text-white text-center leading-tight flex-1">{displayMatch.homeTeam}</span>
+                {displayMatch.status === 'LIVE' || displayMatch.status === 'FINISHED' ? (
+                  <span className="text-4xl font-black font-mono text-amber-400 bg-slate-950 px-4 py-2 rounded-xl border border-amber-500/40 shadow-inner mx-1">
+                    {displayMatch.scoreHome} - {displayMatch.scoreAway}
+                  </span>
+                ) : (
+                  <span className="text-2xl font-black font-mono text-slate-300 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 shadow-inner mx-1">
+                    VS
+                  </span>
+                )}
+                <span className="text-sm font-black text-white text-center leading-tight flex-1">{displayMatch.awayTeam}</span>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="bg-slate-900/60 border border-slate-700 rounded-2xl p-4 flex items-center justify-center">
-            <span className="text-xs text-slate-500 font-bold">Partido por comenzar...</span>
-          </div>
+          ) : (
+            <div className="bg-slate-900/60 border border-slate-700 rounded-2xl p-4 flex items-center justify-center">
+              <span className="text-xs text-slate-500 font-bold">Partido por comenzar...</span>
+            </div>
+          )
         )}
 
         {/* Tarjeta del Código QR */}

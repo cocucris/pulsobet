@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MatchFinishedEvent = exports.SessionModeChangedEvent = exports.CardClosedEvent = exports.CardVoteUpdatedEvent = exports.CardPublishedEvent = exports.CardSubmittedEvent = exports.SessionResetEvent = exports.MatchStartedEvent = exports.RewardDeliveredEvent = exports.RewardReservedEvent = exports.LeaderboardUpdatedEvent = exports.PlayerVotedEvent = exports.PlayerJoinedEvent = exports.TriviaResultEvent = exports.TriviaClosedEvent = exports.TriviaOpenedEvent = exports.TriviaCreatedEvent = exports.MatchScoreUpdatedEvent = void 0;
+exports.MatchFinishedEvent = exports.VotingClosedEvent = exports.SessionModeChangedEvent = exports.CardClosedEvent = exports.CardVoteUpdatedEvent = exports.CardPublishedEvent = exports.CardSubmittedEvent = exports.SessionResetEvent = exports.MatchStartedEvent = exports.RewardDeliveredEvent = exports.RewardReservedEvent = exports.LeaderboardUpdatedEvent = exports.PlayerVotedEvent = exports.PlayerJoinedEvent = exports.TriviaResultEvent = exports.TriviaClosedEvent = exports.TriviaOpenedEvent = exports.TriviaCreatedEvent = exports.MatchScoreUpdatedEvent = void 0;
 class MatchScoreUpdatedEvent {
     sessionId;
     scoreHome;
@@ -224,6 +224,17 @@ class SessionModeChangedEvent {
     }
 }
 exports.SessionModeChangedEvent = SessionModeChangedEvent;
+class VotingClosedEvent {
+    sessionId;
+    results;
+    eventNumber;
+    constructor(sessionId, results, eventNumber) {
+        this.sessionId = sessionId;
+        this.results = results;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.VotingClosedEvent = VotingClosedEvent;
 class MatchFinishedEvent {
     sessionId;
     match;

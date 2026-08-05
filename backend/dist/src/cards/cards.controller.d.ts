@@ -42,6 +42,12 @@ export declare class CardsController {
     close(id: string): Promise<{
         status: string;
     }>;
+    closeAll(dto: {
+        sessionId: string;
+    }): Promise<{
+        status: string;
+        closedCount: number;
+    }>;
     vote(id: string, dto: VoteCardDto): Promise<{
         status: string;
         counts: {

@@ -177,34 +177,29 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             await this.sessionCache.setMode(actualSessionId, mode);
         }
         const sessionMode = mode;
-        let activeCard = await this.sessionCache.getActiveCard(actualSessionId);
-        if (!activeCard) {
-            const dbCard = await this.prisma.profileCard.findFirst({
+        let activeCards = await this.sessionCache.getActiveCards(actualSessionId);
+        if (activeCards.length === 0) {
+            const dbCards = await this.prisma.profileCard.findMany({
                 where: { sessionId: actualSessionId, status: 'APPROVED' },
-                orderBy: { createdAt: 'desc' },
+                orderBy: { createdAt: 'asc' },
             });
-            if (dbCard) {
-                const latestApproved = await this.prisma.profileCard.findFirst({
-                    where: { sessionId: actualSessionId, status: 'APPROVED' },
-                    orderBy: { createdAt: 'desc' },
-                });
-                if (latestApproved && latestApproved.id === dbCard.id) {
-                    activeCard = await this.enrichCardForSnapshot(dbCard);
-                    await this.sessionCache.setActiveCard(actualSessionId, activeCard);
-                }
+            if (dbCards.length > 0) {
+                activeCards = await Promise.all(dbCards.map((c) => this.enrichCardForSnapshot(c)));
+                await this.sessionCache.setActiveCards(actualSessionId, activeCards);
             }
         }
         let cardsHistory = await this.sessionCache.getCardsHistory(actualSessionId);
         if (cardsHistory.length === 0) {
-            const approvedCards = await this.prisma.profileCard.findMany({
-                where: { sessionId: actualSessionId, status: 'APPROVED' },
+            const closedCards = await this.prisma.profileCard.findMany({
+                where: {
+                    sessionId: actualSessionId,
+                    status: 'APPROVED',
+                    id: { notIn: activeCards.map((c) => c.id) },
+                },
                 orderBy: { createdAt: 'asc' },
             });
-            const historyCards = activeCard
-                ? approvedCards.filter((c) => c.id !== activeCard.id)
-                : approvedCards.slice(0, -1);
-            if (historyCards.length > 0) {
-                cardsHistory = await Promise.all(historyCards.map((c) => this.enrichCardForSnapshot(c)));
+            if (closedCards.length > 0) {
+                cardsHistory = await Promise.all(closedCards.map((c) => this.enrichCardForSnapshot(c)));
                 for (const c of cardsHistory) {
                     await this.sessionCache.addCardToHistory(actualSessionId, c);
                 }
@@ -213,12 +208,15 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         const pendingCardsCount = await this.prisma.profileCard.count({
             where: { sessionId: actualSessionId, status: 'PENDING' },
         });
-        let myCardVote = null;
-        if (playerId && activeCard) {
-            const vote = await this.prisma.cardVote.findUnique({
-                where: { cardId_playerId: { cardId: activeCard.id, playerId } },
+        let myCardVotes = {};
+        if (playerId && activeCards.length > 0) {
+            const votes = await this.prisma.cardVote.findMany({
+                where: {
+                    playerId,
+                    cardId: { in: activeCards.map((c) => c.id) },
+                },
             });
-            myCardVote = vote?.choice || null;
+            myCardVotes = Object.fromEntries(votes.map((v) => [v.cardId, v.choice]));
         }
         return {
             sessionId: actualSessionId,
@@ -234,10 +232,10 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             connectedPlayersCount,
             rewards: rewards || [],
             mode: sessionMode,
-            activeCard,
+            activeCards,
             cardsHistory,
             pendingCardsCount,
-            myCardVote,
+            myCardVotes,
             barSettings: {
                 name: session.bar?.name || 'PulsoBet Bar',
                 slug: session.bar?.slug || 'pulsobet',

@@ -20,6 +20,7 @@ interface CardModeProps {
 export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
   const activeCards = useSessionStore((s) => s.snapshot?.activeCards) || [];
   const myCardVotes = useSessionStore((s) => s.snapshot?.myCardVotes) || {};
+  const votingClosed = useSessionStore((s) => s.snapshot?.votingClosed) || false;
 
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
   const [showForm, setShowForm] = useState(false);
@@ -107,7 +108,16 @@ export function CardMode({ sessionId, playerId, tableNumber }: CardModeProps) {
       )}
 
       {/* FICHA ACTIVA EN VOTACIÓN */}
-      {activeCard ? (
+      {votingClosed ? (
+        <div className="w-full text-center p-8 bg-slate-900/60 border-2 border-red-500/40 rounded-2xl">
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-5xl">🔒</span>
+            <p className="text-lg font-black text-red-400 uppercase tracking-wider">Votación Cerrada</p>
+            <p className="text-xs text-slate-300">Los resultados finales se muestran en la pantalla del bar</p>
+            <p className="text-[11px] text-slate-500 mt-2">¡Gracias por participar! 🎉</p>
+          </div>
+        </div>
+      ) : activeCard ? (
         <div className="w-full bg-slate-900 rounded-2xl shadow-2xl border border-pink-500/40 overflow-hidden">
           {/* Foto + datos principales */}
           <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-500/10 to-transparent">

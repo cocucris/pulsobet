@@ -44,6 +44,11 @@ export declare class CardsService {
     closeCard(cardId: string): Promise<{
         status: string;
     }>;
+    closeAllCards(sessionId: string): Promise<{
+        status: string;
+        closedCount: number;
+    }>;
+    private getTop3ByCategory;
     private addCardToHistory;
     voteCard(cardId: string, playerId: string, choice: 'INTERESTED' | 'INTRODUCE' | 'PASS'): Promise<{
         status: string;

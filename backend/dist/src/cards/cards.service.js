@@ -106,16 +106,12 @@ let CardsService = CardsService_1 = class CardsService {
             throw new common_1.NotFoundException('Ficha no encontrada');
         if (card.status !== 'PENDING')
             throw new common_1.BadRequestException('La ficha ya fue procesada');
-        const currentActive = await this.sessionCache.getActiveCard(card.sessionId);
-        if (currentActive && currentActive.id !== cardId) {
-            await this.addCardToHistory(currentActive);
-        }
         const approved = await this.prisma.profileCard.update({
             where: { id: cardId },
             data: { status: 'APPROVED' },
         });
         const enriched = await this.enrichCard(approved);
-        await this.sessionCache.setActiveCard(card.sessionId, enriched);
+        await this.sessionCache.addActiveCard(card.sessionId, enriched);
         const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
         this.eventEmitter.emit('card.published', new session_events_1.CardPublishedEvent(card.sessionId, enriched, eventNumber));
         return { status: 'success' };
@@ -128,9 +124,10 @@ let CardsService = CardsService_1 = class CardsService {
             where: { id: cardId },
             data: { status: 'REJECTED' },
         });
-        const currentActive = await this.sessionCache.getActiveCard(card.sessionId);
-        if (currentActive?.id === cardId) {
-            await this.sessionCache.setActiveCard(card.sessionId, null);
+        const activeCards = await this.sessionCache.getActiveCards(card.sessionId);
+        const wasActive = activeCards.some((c) => c.id === cardId);
+        if (wasActive) {
+            await this.sessionCache.removeActiveCard(card.sessionId, cardId);
             const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
             this.eventEmitter.emit('card.closed', new session_events_1.CardClosedEvent(card.sessionId, cardId, null, eventNumber));
         }
@@ -142,13 +139,41 @@ let CardsService = CardsService_1 = class CardsService {
             throw new common_1.NotFoundException('Ficha no encontrada');
         const enriched = await this.enrichCard(card);
         await this.addCardToHistory(enriched);
-        const currentActive = await this.sessionCache.getActiveCard(card.sessionId);
-        if (currentActive?.id === cardId) {
-            await this.sessionCache.setActiveCard(card.sessionId, null);
-        }
+        await this.sessionCache.removeActiveCard(card.sessionId, cardId);
         const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
         this.eventEmitter.emit('card.closed', new session_events_1.CardClosedEvent(card.sessionId, cardId, enriched, eventNumber));
         return { status: 'success' };
+    }
+    async closeAllCards(sessionId) {
+        const session = await this.resolveActiveSession(sessionId);
+        const activeCards = await this.sessionCache.getActiveCards(session.id);
+        if (activeCards.length === 0) {
+            throw new common_1.BadRequestException('No hay fichas activas para cerrar');
+        }
+        const topInterested = this.getTop3ByCategory(activeCards, 'interested');
+        const topIntroduce = this.getTop3ByCategory(activeCards, 'introduce');
+        for (const card of activeCards) {
+            await this.closeCard(card.id);
+        }
+        const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+        this.eventEmitter.emit('voting.closed', new session_events_1.VotingClosedEvent(session.id, { topInterested, topIntroduce }, eventNumber));
+        this.logger.log(`Votación cerrada en sesión ${session.id}: ${activeCards.length} fichas procesadas`);
+        return { status: 'success', closedCount: activeCards.length };
+    }
+    getTop3ByCategory(cards, category) {
+        return cards
+            .map((c) => ({
+            id: c.id,
+            name: c.name,
+            photoUrl: c.photoUrl,
+            tableNumber: c.tableNumber,
+            percentage: c.totalVotes > 0 ? Math.round((c.counts[category] / c.totalVotes) * 100) : 0,
+            votes: c.counts[category],
+            totalVotes: c.totalVotes,
+        }))
+            .filter((c) => c.votes > 0)
+            .sort((a, b) => b.percentage - a.percentage || b.votes - a.votes)
+            .slice(0, 3);
     }
     async addCardToHistory(card) {
         const enriched = card.counts ? card : await this.enrichCard(card);
@@ -161,8 +186,9 @@ let CardsService = CardsService_1 = class CardsService {
         if (card.status !== 'APPROVED') {
             throw new common_1.BadRequestException('Esta ficha no está abierta a votación');
         }
-        const active = await this.sessionCache.getActiveCard(card.sessionId);
-        if (!active || active.id !== cardId) {
+        const activeCards = await this.sessionCache.getActiveCards(card.sessionId);
+        const isActive = activeCards.some((c) => c.id === cardId);
+        if (!isActive) {
             throw new common_1.BadRequestException('La votación de esta ficha ya fue cerrada');
         }
         await this.prisma.cardVote.upsert({
@@ -171,7 +197,7 @@ let CardsService = CardsService_1 = class CardsService {
             update: { choice },
         });
         const enriched = await this.enrichCard(card);
-        await this.sessionCache.setActiveCard(card.sessionId, enriched);
+        await this.sessionCache.addActiveCard(card.sessionId, enriched);
         const eventNumber = await this.sessionCache.incrementEventNumber(card.sessionId);
         this.eventEmitter.emit('card.vote.updated', new session_events_1.CardVoteUpdatedEvent(card.sessionId, cardId, enriched.counts, enriched.totalVotes, eventNumber));
         return { status: 'success', counts: enriched.counts, totalVotes: enriched.totalVotes };

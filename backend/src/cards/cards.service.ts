@@ -8,6 +8,7 @@ import {
   CardVoteUpdatedEvent,
   CardClosedEvent,
   SessionModeChangedEvent,
+  VotingClosedEvent,
 } from '../session/session.events';
 import { CreateCardDto } from './dto/create-card.dto';
 
@@ -164,6 +165,58 @@ export class CardsService {
     this.eventEmitter.emit('card.closed', new CardClosedEvent(card.sessionId, cardId, enriched, eventNumber));
 
     return { status: 'success' };
+  }
+
+  /**
+   * Cerrar TODAS las fichas activas de una sesión y calcular resultados finales
+   * Emite evento VOTING_CLOSED con el TOP 3 de cada categoría
+   */
+  async closeAllCards(sessionId: string) {
+    const session = await this.resolveActiveSession(sessionId);
+    const activeCards = await this.sessionCache.getActiveCards(session.id);
+
+    if (activeCards.length === 0) {
+      throw new BadRequestException('No hay fichas activas para cerrar');
+    }
+
+    // Calcular TOP 3 de cada categoría antes de cerrar
+    const topInterested = this.getTop3ByCategory(activeCards, 'interested');
+    const topIntroduce = this.getTop3ByCategory(activeCards, 'introduce');
+
+    // Cerrar cada ficha activa (mover a historial)
+    for (const card of activeCards) {
+      await this.closeCard(card.id);
+    }
+
+    // Emitir evento de votación cerrada con resultados
+    const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+    this.eventEmitter.emit(
+      'voting.closed',
+      new VotingClosedEvent(session.id, { topInterested, topIntroduce }, eventNumber),
+    );
+
+    this.logger.log(`Votación cerrada en sesión ${session.id}: ${activeCards.length} fichas procesadas`);
+
+    return { status: 'success', closedCount: activeCards.length };
+  }
+
+  /**
+   * Calcula el TOP 3 de fichas por categoría de voto
+   */
+  private getTop3ByCategory(cards: any[], category: 'interested' | 'introduce') {
+    return cards
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        photoUrl: c.photoUrl,
+        tableNumber: c.tableNumber,
+        percentage: c.totalVotes > 0 ? Math.round((c.counts[category] / c.totalVotes) * 100) : 0,
+        votes: c.counts[category],
+        totalVotes: c.totalVotes,
+      }))
+      .filter((c) => c.votes > 0) // Solo incluir fichas con al menos 1 voto en esa categoría
+      .sort((a, b) => b.percentage - a.percentage || b.votes - a.votes) // Ordenar por % y luego por votos
+      .slice(0, 3);
   }
 
   private async addCardToHistory(card: any) {

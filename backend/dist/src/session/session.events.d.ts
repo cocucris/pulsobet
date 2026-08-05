@@ -134,6 +134,18 @@ export declare class SessionModeChangedEvent {
     readonly eventNumber: number;
     constructor(sessionId: string, mode: string, eventNumber: number);
 }
+export declare class VotingClosedEvent {
+    readonly sessionId: string;
+    readonly results: {
+        topInterested: any[];
+        topIntroduce: any[];
+    };
+    readonly eventNumber: number;
+    constructor(sessionId: string, results: {
+        topInterested: any[];
+        topIntroduce: any[];
+    }, eventNumber: number);
+}
 export declare class MatchFinishedEvent {
     readonly sessionId: string;
     readonly match: any;

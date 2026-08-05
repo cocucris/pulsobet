@@ -75,6 +75,34 @@ export function CardsControl({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleCloseAllCards = async () => {
+    const confirmed = window.confirm(
+      `¿Cerrar la votación de TODAS las fichas activas (${activeCards.length})?\n\nSe mostrarán los resultados finales en la TV y se deshabilitará la votación en los celulares.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await fetch(`${API_URL}/cards/close-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.message || `Error al cerrar la votación (HTTP ${res.status})`);
+        return;
+      }
+      // El evento VOTING_CLOSED del socket actualizará el estado automáticamente
+    } catch (e) {
+      console.error('Error cerrando votación:', e);
+      setError('Error de red. Intentá de nuevo.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <section className="bg-slate-800 p-6 rounded-2xl border border-pink-500/30 shadow-xl">
       {/* Switch de modo */}
@@ -214,27 +242,19 @@ export function CardsControl({ sessionId }: { sessionId: string }) {
             )}
           </div>
 
-          {/* HISTORIAL DE LA NOCHE */}
-          {cardsHistory.length > 0 && (
+          {/* BOTÓN CERRAR VOTACIÓN GENERAL */}
+          {activeCards.length > 0 && (
             <div className="flex flex-col gap-2 pt-3 border-t border-slate-700">
-              <span className="text-xs font-black uppercase text-slate-400 tracking-wider">
-                📋 Fichas Cerradas ({cardsHistory.length})
-              </span>
-              {cardsHistory.map((card: any) => (
-                <div key={card.id} className="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-800 flex-shrink-0">
-                    {card.photoUrl ? (
-                      <img src={`${API_URL}${card.photoUrl}`} alt={card.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">👤</div>
-                    )}
-                  </div>
-                  <p className="text-xs font-bold text-slate-300 flex-1">{card.name}</p>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    😍 {card.counts.interested} · 🤝 {card.counts.introduce} · ✋ {card.counts.pass}
-                  </span>
-                </div>
-              ))}
+              <button
+                disabled={isLoading}
+                onClick={handleCloseAllCards}
+                className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl uppercase tracking-wider text-xs transition-all shadow-lg"
+              >
+                🔒 Cerrar Votación General ({activeCards.length} {activeCards.length === 1 ? 'ficha' : 'fichas'})
+              </button>
+              <p className="text-[10px] text-slate-500 text-center">
+                Se mostrarán los resultados finales en la TV y se deshabilitará la votación
+              </p>
             </div>
           )}
         </div>

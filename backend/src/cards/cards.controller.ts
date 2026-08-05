@@ -85,6 +85,15 @@ export class CardsController {
   }
 
   /**
+   * POST /cards/close-all
+   * Cierra TODAS las fichas activas de la sesión y emite resultados finales
+   */
+  @Post('close-all')
+  closeAll(@Body() dto: { sessionId: string }) {
+    return this.cardsService.closeAllCards(dto.sessionId);
+  }
+
+  /**
    * POST /cards/:id/vote
    * Voto del jugador: INTERESTED | INTRODUCE | PASS (re-votar cambia el voto)
    */
