@@ -94,5 +94,28 @@ export interface SessionSnapshot {
 
   myCardVotes: Record<string, string>;
 
+  votingClosed: boolean;
+
+  votingResults: {
+    topInterested: {
+      id: string;
+      name: string;
+      photoUrl: string | null;
+      tableNumber: string | null;
+      percentage: number;
+      votes: number;
+      totalVotes: number;
+    }[];
+    topIntroduce: {
+      id: string;
+      name: string;
+      photoUrl: string | null;
+      tableNumber: string | null;
+      percentage: number;
+      votes: number;
+      totalVotes: number;
+    }[];
+  } | null;
+
   connectionStatus: 'connected';
 }

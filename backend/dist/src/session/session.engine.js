@@ -236,6 +236,8 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             cardsHistory,
             pendingCardsCount,
             myCardVotes,
+            votingClosed: false,
+            votingResults: null,
             barSettings: {
                 name: session.bar?.name || 'PulsoBet Bar',
                 slug: session.bar?.slug || 'pulsobet',
