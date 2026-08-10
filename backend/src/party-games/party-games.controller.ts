@@ -36,6 +36,12 @@ export class PartyGamesController {
     return this.partyGamesService.createRound(dto);
   }
 
+  @Post('rounds/:roundId/start')
+  async startCountdown(@Param('roundId') roundId: string) {
+    await this.partyGamesService.startCountdown(roundId);
+    return { status: 'ok' };
+  }
+
   @Post('rounds/:roundId/advance')
   async advancePhase(@Param('roundId') roundId: string) {
     await this.partyGamesService.advancePhase(roundId);
@@ -46,6 +52,12 @@ export class PartyGamesController {
   async endRound(@Param('roundId') roundId: string) {
     await this.partyGamesService.endRound(roundId);
     return { status: 'ok' };
+  }
+
+  // Finalizar el juego completo (podio definitivo)
+  @Post('game/end/:sessionId')
+  async endGame(@Param('sessionId') sessionId: string) {
+    return this.partyGamesService.endGame(sessionId);
   }
 
   // ─── CONSULTA DE ESTADO (para reconexión / polling fallback) ─────────────

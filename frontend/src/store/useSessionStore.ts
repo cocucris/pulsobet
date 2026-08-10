@@ -54,6 +54,7 @@ export interface SessionSnapshot {
     id: string;
     nickname: string;
     totalPoints: number;
+    rank?: number;
     votedTriviaIds: string[];
   } | null;
 
@@ -124,7 +125,7 @@ export interface SessionSnapshot {
     activeRound: {
       id: string;
       gameType: 'BLUFFING' | 'TUTI_FRUTI' | 'SOCIAL_JUDGMENT';
-      phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
+      phase: 'LOBBY' | 'COUNTDOWN' | 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
       prompt: string;
       categories: string[] | null;
       timeLimit: number;
@@ -132,9 +133,27 @@ export interface SessionSnapshot {
       submittedCount: number;
       totalPlayers: number;
       options: any[];
+      countdownEndsAt?: string; // ISO — fin de la cuenta regresiva (fase COUNTDOWN)
+      inputStartedAt?: string;  // ISO — inicio real de INPUT (para el timer)
+      bastaBy?: string;         // nickname del que gritó BASTA (Tuti Fruti)
+      results?: {
+        pointsAwarded: { playerId: string; points: number; source: string }[];
+        submissions: {
+          id: string;
+          playerId: string;
+          nickname: string;
+          content: any;
+          isBasta: boolean;
+          pointsEarned: number;
+        }[];
+      };
     } | null;
     mySubmission: any | null;
     myVote: string | null;
+    // Podio definitivo cuando el admin finaliza el juego completo
+    gameOver?: {
+      leaderboard: { rank: number; id: string; nickname: string; totalPoints: number; streakCount: number }[];
+    } | null;
   };
 
   connectionStatus: 'connected';
@@ -496,6 +515,24 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
               activeRound: payload?.round ?? null,
               mySubmission: null,
               myVote: null,
+              gameOver: null, // nueva ronda: limpiar podio anterior
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
+      case 'PARTY_GAME_OVER':
+        set({
+          snapshot: {
+            ...snapshot,
+            leaderboardTop10: payload.leaderboard || snapshot.leaderboardTop10,
+            partyGame: {
+              ...snapshot.partyGame,
+              activeRound: null,
+              mySubmission: null,
+              myVote: null,
+              gameOver: { leaderboard: payload.leaderboard || [] },
             },
           },
           lastEventNumber: nextEventNumber,
@@ -514,7 +551,25 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 ...currentRound,
                 phase: payload.phase,
                 ...(payload.payload?.options ? { options: payload.payload.options } : {}),
+                ...(payload.payload?.countdownEndsAt ? { countdownEndsAt: payload.payload.countdownEndsAt } : {}),
+                ...(payload.payload?.inputStartedAt ? { inputStartedAt: payload.payload.inputStartedAt } : {}),
               },
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
+      case 'PARTY_BASTA_CALLED': {
+        const round = snapshot.partyGame?.activeRound;
+        if (!round || round.id !== payload?.roundId) break;
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              activeRound: { ...round, bastaBy: payload.nickname },
             },
           },
           lastEventNumber: nextEventNumber,
@@ -571,7 +626,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
             partyGame: {
               ...snapshot.partyGame,
               activeRound: snapshot.partyGame?.activeRound
-                ? { ...snapshot.partyGame.activeRound, phase: 'REVEAL' }
+                ? { ...snapshot.partyGame.activeRound, phase: 'REVEAL', results: payload.results }
                 : null,
             },
           },

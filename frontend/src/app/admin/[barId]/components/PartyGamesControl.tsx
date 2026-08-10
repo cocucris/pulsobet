@@ -118,9 +118,19 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
     await fetch(`${API_URL}/party-games/rounds/${activeRound.id}/advance`, { method: 'POST' });
   };
 
+  const handleStartCountdown = async () => {
+    if (!activeRound) return;
+    await fetch(`${API_URL}/party-games/rounds/${activeRound.id}/start`, { method: 'POST' });
+  };
+
   const handleEndRound = async () => {
     if (!activeRound) return;
     await fetch(`${API_URL}/party-games/rounds/${activeRound.id}/end`, { method: 'POST' });
+  };
+
+  const handleEndGame = async () => {
+    if (!confirm('¿Finalizar el juego completo y mostrar el podio definitivo?')) return;
+    await fetch(`${API_URL}/party-games/game/end/${sessionId}`, { method: 'POST' });
   };
 
   const colorMap: Record<string, string> = {
@@ -130,6 +140,8 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
   };
 
   const phaseLabel: Record<string, string> = {
+    LOBBY: 'Lobby — Previa del juego',
+    COUNTDOWN: 'Cuenta regresiva — 3, 2, 1...',
     INPUT: 'Fase INPUT — Jugadores respondiendo',
     VOTING: 'Fase VOTING — Jugadores votando',
     REVEAL: 'Fase REVEAL — Resultados visibles',
@@ -163,7 +175,16 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {activeRound.phase !== 'FINISHED' && activeRound.phase !== 'REVEAL' && (
+            {activeRound.phase === 'LOBBY' && (
+              <button
+                id="party-start-countdown-btn"
+                onClick={handleStartCountdown}
+                className="py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-xl transition-colors"
+              >
+                ▶ Iniciar (3-2-1)
+              </button>
+            )}
+            {(activeRound.phase === 'INPUT' || activeRound.phase === 'VOTING') && (
               <button
                 id="party-advance-btn"
                 onClick={handleAdvancePhase}
@@ -175,7 +196,11 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
             <button
               id="party-end-btn"
               onClick={handleEndRound}
-              className="py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-xl transition-colors col-span-1"
+              className={`py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-xl transition-colors ${
+                activeRound.phase === 'COUNTDOWN' || activeRound.phase === 'REVEAL' || activeRound.phase === 'FINISHED'
+                  ? 'col-span-2'
+                  : 'col-span-1'
+              }`}
             >
               ✕ Cerrar Ronda
             </button>
@@ -359,6 +384,17 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
           )}
         </>
       )}
+
+      {/* Finalizar juego completo (podio definitivo) */}
+      <div className="mt-6 pt-4 border-t border-slate-700">
+        <button
+          id="party-end-game-btn"
+          onClick={handleEndGame}
+          className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black rounded-xl transition-all"
+        >
+          🏆 Finalizar Juego / Mostrar Podio
+        </button>
+      </div>
     </div>
   );
 }

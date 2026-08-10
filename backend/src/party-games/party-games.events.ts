@@ -7,13 +7,24 @@ export class PartyRoundStartedEvent {
   ) {}
 }
 
-// Evento emitido al cambiar de fase (INPUT -> VOTING -> REVEAL -> FINISHED)
+// Evento emitido al cambiar de fase (LOBBY -> COUNTDOWN -> INPUT -> VOTING -> REVEAL -> FINISHED)
 export class PartyPhaseChangedEvent {
   constructor(
     public readonly sessionId: string,
     public readonly roundId: string,
-    public readonly phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED',
+    public readonly phase: 'LOBBY' | 'COUNTDOWN' | 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED',
     public readonly payload: any, // datos específicos por fase
+    public readonly eventNumber: number,
+  ) {}
+}
+
+// Evento emitido cuando un jugador grita ¡BASTA! (Tuti Fruti) — corte global
+export class PartyBastaCalledEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly roundId: string,
+    public readonly playerId: string,
+    public readonly nickname: string,
     public readonly eventNumber: number,
   ) {}
 }
@@ -55,6 +66,16 @@ export class PartyRoundFinishedEvent {
   constructor(
     public readonly sessionId: string,
     public readonly roundId: string,
+    public readonly eventNumber: number,
+  ) {}
+}
+
+// Evento emitido al finalizar el juego completo (podio definitivo)
+export class PartyGameOverEvent {
+  constructor(
+    public readonly sessionId: string,
+    public readonly gameType: string,
+    public readonly finalLeaderboard: any[], // Top 10 definitivo
     public readonly eventNumber: number,
   ) {}
 }

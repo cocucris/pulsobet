@@ -155,10 +155,14 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                     });
                     votedTriviaIds = votes.map((v) => v.questionId);
                 }
+                const ahead = await this.prisma.player.count({
+                    where: { sessionId: session.id, totalPoints: { gt: playerObj.totalPoints } },
+                });
                 myPlayer = {
                     id: playerObj.id,
                     nickname: playerObj.nickname,
                     totalPoints: playerObj.totalPoints,
+                    rank: ahead + 1,
                     votedTriviaIds,
                 };
             }

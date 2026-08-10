@@ -8,6 +8,8 @@ import {
   PartyVoteCastEvent,
   PartyRoundResultEvent,
   PartyRoundFinishedEvent,
+  PartyBastaCalledEvent,
+  PartyGameOverEvent,
 } from './party-games.events';
 
 @Injectable()
@@ -103,6 +105,36 @@ export class PartyGamesDispatcher {
       });
     } catch (e) {
       this.logger.error(`Error en handlePartyRoundFinished: ${e.message}`);
+    }
+  }
+
+  @OnEvent('party.basta.called')
+  handlePartyBastaCalled(event: PartyBastaCalledEvent) {
+    try {
+      this.logger.log(`[PartyDispatcher] PARTY_BASTA_CALLED (${event.nickname}) → sesión ${event.sessionId}`);
+      // Broadcast global: congela los inputs de TV y de TODOS los celulares
+      this.liveGateway.broadcastToSession(event.sessionId, 'PARTY_BASTA_CALLED', {
+        roundId: event.roundId,
+        playerId: event.playerId,
+        nickname: event.nickname,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handlePartyBastaCalled: ${e.message}`);
+    }
+  }
+
+  @OnEvent('party.game.over')
+  handlePartyGameOver(event: PartyGameOverEvent) {
+    try {
+      this.logger.log(`[PartyDispatcher] PARTY_GAME_OVER → sesión ${event.sessionId}`);
+      this.liveGateway.broadcastToSession(event.sessionId, 'PARTY_GAME_OVER', {
+        gameType: event.gameType,
+        leaderboard: event.finalLeaderboard,
+        eventNumber: event.eventNumber,
+      });
+    } catch (e) {
+      this.logger.error(`Error en handlePartyGameOver: ${e.message}`);
     }
   }
 }

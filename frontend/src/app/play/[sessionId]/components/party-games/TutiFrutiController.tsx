@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSessionStore } from '@/store/useSessionStore';
 
 interface TutiFrutiRound {
   id: string;
@@ -9,6 +10,19 @@ interface TutiFrutiRound {
   categories: string[] | null;
   submittedCount: number;
   totalPlayers: number;
+  countdownEndsAt?: string;
+  bastaBy?: string;
+  results?: {
+    pointsAwarded: { playerId: string; points: number; source: string }[];
+    submissions: {
+      id: string;
+      playerId: string;
+      nickname: string;
+      content: any;
+      isBasta: boolean;
+      pointsEarned: number;
+    }[];
+  };
 }
 
 interface Props {
@@ -19,18 +33,61 @@ interface Props {
 
 export function TutiFrutiController({ round, mySubmission, socket }: Props) {
   const categories = round.categories ?? [];
+  const myPlayerId = useSessionStore((s) => s.snapshot?.myPlayer?.id);
+  const myRank = useSessionStore((s) => s.snapshot?.myPlayer?.rank);
   const [answers, setAnswers] = useState<Record<string, string>>(
     Object.fromEntries(categories.map((c) => [c, ''])),
   );
   const [sending, setSending] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Mis puntos en esta ronda (fase REVEAL)
+  const myResult = round.results?.submissions.find((s) => s.playerId === myPlayerId);
+
+  // ¿Alguien (otro) gritó BASTA? → congelar inputs
+  const frozenByOther = Boolean(round.bastaBy) && !mySubmission?.isBasta;
+  const inputsEnabled = round.phase === 'INPUT' && !frozenByOther && !mySubmission;
+
+  // Cuenta regresiva sincronizada con el servidor
+  useEffect(() => {
+    if (round.phase !== 'COUNTDOWN' || !round.countdownEndsAt) {
+      setCountdown(null);
+      return;
+    }
+    const end = new Date(round.countdownEndsAt).getTime();
+    const update = () => setCountdown(Math.max(0, Math.ceil((end - Date.now()) / 1000)));
+    update();
+    const iv = setInterval(update, 200);
+    return () => clearInterval(iv);
+  }, [round.countdownEndsAt, round.phase]);
+
+  // Autosave: enviar respuestas parciales mientras se escribe (debounce 800ms).
+  // Así, si OTRO jugador grita BASTA, el servidor ya tiene lo tuyo.
+  useEffect(() => {
+    if (round.phase !== 'INPUT' || mySubmission) return;
+    const hasContent = Object.values(answers).some((a) => a.trim() !== '');
+    if (!hasContent) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers } });
+    }, 800);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, round.phase, round.id, mySubmission]);
 
   const handleBasta = () => {
-    if (sending) return;
+    if (sending || !inputsEnabled) return;
     setSending(true);
     socket?.emit('PARTY_BASTA', { roundId: round.id, answers });
     setTimeout(() => setSending(false), 1500);
   };
 
+  // Pantalla de éxito tras enviar (propia submission confirmada)
   if (mySubmission) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
@@ -58,6 +115,43 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
     );
   }
 
+  // LOBBY — espera con categorías
+  if (round.phase === 'LOBBY') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
+        <div className="text-6xl">🔤</div>
+        <h3 className="text-3xl font-black text-emerald-400">Tuti Fruti</h3>
+        <p className="text-white/60">Categorías de esta ronda:</p>
+        <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+          {categories.map((cat) => (
+            <span
+              key={cat}
+              className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-4 py-2 rounded-full font-bold"
+            >
+              {cat}
+            </span>
+          ))}
+        </div>
+        <p className="text-white/40 animate-pulse">Esperando que arranque la ronda...</p>
+      </div>
+    );
+  }
+
+  // COUNTDOWN — 3, 2, 1 (inputs bloqueados)
+  if (round.phase === 'COUNTDOWN') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-6 text-center">
+        <p className="text-white/60 text-xl">La letra es</p>
+        <div className="text-8xl font-black text-emerald-400">{round.prompt}</div>
+        <div key={countdown} className="text-9xl font-black text-white leading-none animate-pulse">
+          {countdown !== null && countdown > 0 ? countdown : '¡YA!'}
+        </div>
+        <p className="text-white/40">Preparate...</p>
+      </div>
+    );
+  }
+
+  // INPUT — formulario activo (o congelado si otro gritó BASTA)
   if (round.phase === 'INPUT') {
     return (
       <div className="flex flex-col gap-5 p-4">
@@ -65,6 +159,12 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
           <div className="text-7xl font-black text-emerald-400 leading-none">{round.prompt}</div>
           <p className="text-white/50 text-sm mt-2">Completá todas las categorías y presioná BASTA</p>
         </div>
+
+        {frozenByOther && (
+          <div className="bg-red-500/20 border border-red-400/40 text-red-300 text-center font-bold rounded-xl px-4 py-3">
+            🛑 ¡{round.bastaBy} gritó BASTA! Tus respuestas ya fueron enviadas.
+          </div>
+        )}
 
         <div className="flex flex-col gap-3">
           {categories.map((cat) => (
@@ -78,7 +178,8 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
                 value={answers[cat] ?? ''}
                 onChange={(e) => setAnswers((prev) => ({ ...prev, [cat]: e.target.value }))}
                 placeholder={`${cat} con ${round.prompt}...`}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-400 transition-colors text-lg"
+                disabled={!inputsEnabled}
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-400 transition-colors text-lg disabled:opacity-40"
               />
             </div>
           ))}
@@ -87,11 +188,37 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
         <button
           id="tuti-basta-btn"
           onClick={handleBasta}
-          disabled={sending}
+          disabled={sending || !inputsEnabled}
           className="w-full py-5 bg-emerald-400 text-black font-black text-2xl rounded-2xl active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-emerald-400/30 mt-2"
         >
           {sending ? 'Enviando...' : '🛑 ¡BASTA!'}
         </button>
+      </div>
+    );
+  }
+
+  // REVEAL — mostrar mis puntos
+  if (round.phase === 'REVEAL') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
+        <div className="text-7xl">{myResult && myResult.pointsEarned > 0 ? '🎉' : '😅'}</div>
+        {myResult && myResult.pointsEarned > 0 ? (
+          <>
+            <h3 className="text-4xl font-black text-emerald-400">+{myResult.pointsEarned} pts</h3>
+            <p className="text-white/60">¡Puntos sumados a tu total!</p>
+          </>
+        ) : (
+          <>
+            <h3 className="text-2xl font-black text-white">Sin puntos esta ronda</h3>
+            <p className="text-white/60">¡La próxima sale!</p>
+          </>
+        )}
+        {myRank && (
+          <p className="text-lg text-white/80">
+            Vas en el puesto <span className="font-black text-amber-400">#{myRank}</span>
+          </p>
+        )}
+        <p className="text-white/40 text-sm animate-pulse">Mirá la pantalla para ver el ranking completo</p>
       </div>
     );
   }

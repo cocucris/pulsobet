@@ -38,11 +38,24 @@ export declare class PartyGamesController {
         submittedCount: number;
         totalPlayers: number;
     }>;
+    startCountdown(roundId: string): Promise<{
+        status: string;
+    }>;
     advancePhase(roundId: string): Promise<{
         status: string;
     }>;
     endRound(roundId: string): Promise<{
         status: string;
+    }>;
+    endGame(sessionId: string): Promise<{
+        status: string;
+        leaderboard: {
+            rank: number;
+            id: string;
+            nickname: string;
+            totalPoints: number;
+            streakCount: number;
+        }[];
     }>;
     getActiveRound(sessionId: string): Promise<{
         submittedCount: number;

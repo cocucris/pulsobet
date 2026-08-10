@@ -60,6 +60,15 @@ export declare class PartyGamesGateway {
         reason: any;
         round?: undefined;
     }>;
+    handleAdminStartCountdown(client: Socket, data: {
+        roundId: string;
+    }): Promise<{
+        status: string;
+        reason?: undefined;
+    } | {
+        status: string;
+        reason: any;
+    }>;
     handleAdminNextPhase(client: Socket, data: {
         roundId: string;
     }): Promise<{

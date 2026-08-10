@@ -56,6 +56,7 @@ export interface SessionSnapshot {
         id: string;
         nickname: string;
         totalPoints: number;
+        rank?: number;
         votedTriviaIds: string[];
     } | null;
     connectedPlayersCount: number;
@@ -124,7 +125,7 @@ export interface SessionSnapshot {
         activeRound: {
             id: string;
             gameType: 'BLUFFING' | 'TUTI_FRUTI' | 'SOCIAL_JUDGMENT';
-            phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
+            phase: 'LOBBY' | 'COUNTDOWN' | 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
             prompt: string;
             categories: string[] | null;
             timeLimit: number;

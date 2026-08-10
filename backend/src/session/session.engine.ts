@@ -188,10 +188,16 @@ export class SessionEngine {
           votedTriviaIds = votes.map((v) => v.questionId);
         }
 
+        // Posición del jugador en el ranking de la sesión (por totalPoints)
+        const ahead = await this.prisma.player.count({
+          where: { sessionId: session.id, totalPoints: { gt: playerObj.totalPoints } },
+        });
+
         myPlayer = {
           id: playerObj.id,
           nickname: playerObj.nickname,
           totalPoints: playerObj.totalPoints,
+          rank: ahead + 1,
           votedTriviaIds,
         };
       }

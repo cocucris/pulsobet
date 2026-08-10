@@ -4,9 +4,15 @@ import { useSessionStore } from '@/store/useSessionStore';
 import { BluffingDisplay } from './party-games/BluffingDisplay';
 import { TutiFrutiDisplay } from './party-games/TutiFrutiDisplay';
 import { SocialJudgmentDisplay } from './party-games/SocialJudgmentDisplay';
+import { PodiumDisplay } from './party-games/PodiumDisplay';
 
 export function PartyGamesDisplay() {
   const partyGame = useSessionStore((s) => s.snapshot?.partyGame);
+
+  // Podio definitivo (juego finalizado por el admin)
+  if (partyGame?.gameOver) {
+    return <PodiumDisplay leaderboard={partyGame.gameOver.leaderboard} />;
+  }
 
   if (!partyGame?.activeRound) {
     return (

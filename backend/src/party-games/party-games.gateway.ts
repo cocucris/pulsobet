@@ -112,6 +112,20 @@ export class PartyGamesGateway {
     }
   }
 
+  @SubscribeMessage('PARTY_ADMIN_START_COUNTDOWN')
+  async handleAdminStartCountdown(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { roundId: string },
+  ) {
+    try {
+      await this.partyGamesService.startCountdown(data.roundId);
+      return { status: 'ok' };
+    } catch (err) {
+      this.logger.warn(`Error en PARTY_ADMIN_START_COUNTDOWN: ${err.message}`);
+      return { status: 'error', reason: err.message };
+    }
+  }
+
   @SubscribeMessage('PARTY_ADMIN_NEXT_PHASE')
   async handleAdminNextPhase(
     @ConnectedSocket() client: Socket,

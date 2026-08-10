@@ -90,6 +90,16 @@ let PartyGamesGateway = PartyGamesGateway_1 = class PartyGamesGateway {
             return { status: 'error', reason: err.message };
         }
     }
+    async handleAdminStartCountdown(client, data) {
+        try {
+            await this.partyGamesService.startCountdown(data.roundId);
+            return { status: 'ok' };
+        }
+        catch (err) {
+            this.logger.warn(`Error en PARTY_ADMIN_START_COUNTDOWN: ${err.message}`);
+            return { status: 'error', reason: err.message };
+        }
+    }
     async handleAdminNextPhase(client, data) {
         try {
             await this.partyGamesService.advancePhase(data.roundId);
@@ -151,6 +161,14 @@ __decorate([
         create_round_dto_1.CreatePartyRoundDto]),
     __metadata("design:returntype", Promise)
 ], PartyGamesGateway.prototype, "handleAdminStartRound", null);
+__decorate([
+    (0, websockets_1.SubscribeMessage)('PARTY_ADMIN_START_COUNTDOWN'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket, Object]),
+    __metadata("design:returntype", Promise)
+], PartyGamesGateway.prototype, "handleAdminStartCountdown", null);
 __decorate([
     (0, websockets_1.SubscribeMessage)('PARTY_ADMIN_NEXT_PHASE'),
     __param(0, (0, websockets_1.ConnectedSocket)()),

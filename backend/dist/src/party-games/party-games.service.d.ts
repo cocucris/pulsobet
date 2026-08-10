@@ -61,8 +61,22 @@ export declare class PartyGamesService {
     castVote(voterId: string, dto: CastPartyVoteDto): Promise<{
         accepted: boolean;
     }>;
+    startCountdown(roundId: string): Promise<{
+        status: string;
+    }>;
+    private startInput;
     advancePhase(roundId: string): Promise<void>;
     endRound(roundId: string): Promise<void>;
+    endGame(sessionId: string): Promise<{
+        status: string;
+        leaderboard: {
+            rank: number;
+            id: string;
+            nickname: string;
+            totalPoints: number;
+            streakCount: number;
+        }[];
+    }>;
     private advanceToVoting;
     private advanceToReveal;
     private finishRound;

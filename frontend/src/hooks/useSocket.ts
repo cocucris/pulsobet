@@ -144,6 +144,8 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       'PARTY_VOTE_UPDATED',
       'PARTY_ROUND_RESULT',
       'PARTY_ROUND_FINISHED',
+      'PARTY_BASTA_CALLED',
+      'PARTY_GAME_OVER',
       // compatibilidad
       'leaderboard_update',
       'match_score_update',

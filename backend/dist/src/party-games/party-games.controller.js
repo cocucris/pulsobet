@@ -36,6 +36,10 @@ let PartyGamesController = PartyGamesController_1 = class PartyGamesController {
     async createRound(dto) {
         return this.partyGamesService.createRound(dto);
     }
+    async startCountdown(roundId) {
+        await this.partyGamesService.startCountdown(roundId);
+        return { status: 'ok' };
+    }
     async advancePhase(roundId) {
         await this.partyGamesService.advancePhase(roundId);
         return { status: 'ok' };
@@ -43,6 +47,9 @@ let PartyGamesController = PartyGamesController_1 = class PartyGamesController {
     async endRound(roundId) {
         await this.partyGamesService.endRound(roundId);
         return { status: 'ok' };
+    }
+    async endGame(sessionId) {
+        return this.partyGamesService.endGame(sessionId);
     }
     async getActiveRound(sessionId) {
         return this.partyGamesService.getActiveRoundForSession(sessionId);
@@ -80,6 +87,13 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PartyGamesController.prototype, "createRound", null);
 __decorate([
+    (0, common_1.Post)('rounds/:roundId/start'),
+    __param(0, (0, common_1.Param)('roundId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PartyGamesController.prototype, "startCountdown", null);
+__decorate([
     (0, common_1.Post)('rounds/:roundId/advance'),
     __param(0, (0, common_1.Param)('roundId')),
     __metadata("design:type", Function),
@@ -93,6 +107,13 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], PartyGamesController.prototype, "endRound", null);
+__decorate([
+    (0, common_1.Post)('game/end/:sessionId'),
+    __param(0, (0, common_1.Param)('sessionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], PartyGamesController.prototype, "endGame", null);
 __decorate([
     (0, common_1.Get)('rounds/active/:sessionId'),
     __param(0, (0, common_1.Param)('sessionId')),

@@ -7,10 +7,18 @@ export declare class PartyRoundStartedEvent {
 export declare class PartyPhaseChangedEvent {
     readonly sessionId: string;
     readonly roundId: string;
-    readonly phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
+    readonly phase: 'LOBBY' | 'COUNTDOWN' | 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
     readonly payload: any;
     readonly eventNumber: number;
-    constructor(sessionId: string, roundId: string, phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED', payload: any, eventNumber: number);
+    constructor(sessionId: string, roundId: string, phase: 'LOBBY' | 'COUNTDOWN' | 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED', payload: any, eventNumber: number);
+}
+export declare class PartyBastaCalledEvent {
+    readonly sessionId: string;
+    readonly roundId: string;
+    readonly playerId: string;
+    readonly nickname: string;
+    readonly eventNumber: number;
+    constructor(sessionId: string, roundId: string, playerId: string, nickname: string, eventNumber: number);
 }
 export declare class PartyInputSubmittedEvent {
     readonly sessionId: string;
@@ -40,4 +48,11 @@ export declare class PartyRoundFinishedEvent {
     readonly roundId: string;
     readonly eventNumber: number;
     constructor(sessionId: string, roundId: string, eventNumber: number);
+}
+export declare class PartyGameOverEvent {
+    readonly sessionId: string;
+    readonly gameType: string;
+    readonly finalLeaderboard: any[];
+    readonly eventNumber: number;
+    constructor(sessionId: string, gameType: string, finalLeaderboard: any[], eventNumber: number);
 }

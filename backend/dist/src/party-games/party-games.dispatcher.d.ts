@@ -1,5 +1,5 @@
 import { LiveGateway } from '../live/live.gateway';
-import { PartyRoundStartedEvent, PartyPhaseChangedEvent, PartyInputSubmittedEvent, PartyVoteCastEvent, PartyRoundResultEvent, PartyRoundFinishedEvent } from './party-games.events';
+import { PartyRoundStartedEvent, PartyPhaseChangedEvent, PartyInputSubmittedEvent, PartyVoteCastEvent, PartyRoundResultEvent, PartyRoundFinishedEvent, PartyBastaCalledEvent, PartyGameOverEvent } from './party-games.events';
 export declare class PartyGamesDispatcher {
     private liveGateway;
     private readonly logger;
@@ -10,4 +10,6 @@ export declare class PartyGamesDispatcher {
     handlePartyVoteCast(event: PartyVoteCastEvent): void;
     handlePartyRoundResult(event: PartyRoundResultEvent): void;
     handlePartyRoundFinished(event: PartyRoundFinishedEvent): void;
+    handlePartyBastaCalled(event: PartyBastaCalledEvent): void;
+    handlePartyGameOver(event: PartyGameOverEvent): void;
 }

@@ -116,11 +116,12 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             }
         }
         const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+        const isTutiFruti = dto.gameType === 'TUTI_FRUTI';
         const round = await this.prisma.partyGameRound.create({
             data: {
                 sessionId: session.id,
                 gameType: dto.gameType,
-                phase: 'INPUT',
+                phase: isTutiFruti ? 'LOBBY' : 'INPUT',
                 prompt: dto.prompt,
                 categories: dto.categories ? dto.categories : undefined,
                 timeLimit: dto.timeLimit ?? 60,
@@ -128,9 +129,11 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         });
         const roundPayload = this.serializeRound(round);
         this.eventEmitter.emit('party.round.started', new party_games_events_1.PartyRoundStartedEvent(session.id, roundPayload, eventNumber));
-        this.scheduler.scheduleAutoClose(`party-input-${round.id}`, round.timeLimit * 1000, async () => {
-            await this.advanceToVoting(round.id, session.id);
-        });
+        if (!isTutiFruti) {
+            this.scheduler.scheduleAutoClose(`party-input-${round.id}`, round.timeLimit * 1000, async () => {
+                await this.advanceToVoting(round.id, session.id);
+            });
+        }
         this.logger.log(`[PartyGames] Ronda ${round.id} (${dto.gameType}) iniciada en sesión ${session.id}`);
         return roundPayload;
     }
@@ -156,7 +159,7 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         });
         const eventNumber = await this.sessionCache.incrementEventNumber(round.sessionId);
         this.eventEmitter.emit('party.input.submitted', new party_games_events_1.PartyInputSubmittedEvent(round.sessionId, round.id, submittedCount, totalPlayers, eventNumber));
-        if (submittedCount >= totalPlayers && totalPlayers > 0) {
+        if (round.gameType !== 'TUTI_FRUTI' && submittedCount >= totalPlayers && totalPlayers > 0) {
             this.scheduler.cancelTimer(`party-input-${round.id}`);
             await this.advanceToVoting(round.id, round.sessionId);
         }
@@ -170,23 +173,32 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         if (round.gameType !== 'TUTI_FRUTI') {
             throw new common_1.BadRequestException('BASTA solo es válido en el juego Tuti Fruti.');
         }
-        const existingBasta = await this.prisma.partyGameSubmission.findFirst({
-            where: { roundId: round.id, isBasta: true },
-        });
-        const isBasta = !existingBasta;
-        await this.prisma.partyGameSubmission.upsert({
-            where: { roundId_playerId: { roundId: round.id, playerId } },
-            update: { content: { answers: dto.answers }, isBasta: isBasta || undefined },
-            create: {
-                roundId: round.id,
-                playerId,
-                content: { answers: dto.answers },
-                isBasta,
-            },
+        const isBasta = await this.prisma.$transaction(async (tx) => {
+            const existingBasta = await tx.partyGameSubmission.findFirst({
+                where: { roundId: round.id, isBasta: true },
+            });
+            const esPrimero = !existingBasta;
+            await tx.partyGameSubmission.upsert({
+                where: { roundId_playerId: { roundId: round.id, playerId } },
+                update: { content: { answers: dto.answers }, isBasta: esPrimero || undefined },
+                create: {
+                    roundId: round.id,
+                    playerId,
+                    content: { answers: dto.answers },
+                    isBasta: esPrimero,
+                },
+            });
+            return esPrimero;
         });
         if (isBasta) {
             this.scheduler.cancelTimer(`party-input-${round.id}`);
             this.logger.log(`[PartyGames] ¡BASTA! en ronda ${round.id} por jugador ${playerId}`);
+            const player = await this.prisma.player.findUnique({
+                where: { id: playerId },
+                select: { nickname: true },
+            });
+            const eventNumber = await this.sessionCache.incrementEventNumber(round.sessionId);
+            this.eventEmitter.emit('party.basta.called', new party_games_events_1.PartyBastaCalledEvent(round.sessionId, round.id, playerId, player?.nickname ?? 'Jugador', eventNumber));
             await this.advanceToVoting(round.id, round.sessionId);
         }
         return { accepted: true, isBasta };
@@ -210,9 +222,50 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         this.eventEmitter.emit('party.vote.cast', new party_games_events_1.PartyVoteCastEvent(round.sessionId, round.id, votesSummary, eventNumber));
         return { accepted: true };
     }
+    async startCountdown(roundId) {
+        const round = await this.getActiveRound(roundId);
+        if (round.phase !== 'LOBBY') {
+            throw new common_1.BadRequestException('La ronda no está en Lobby.');
+        }
+        const countdownSeconds = 3;
+        const countdownEndsAt = new Date(Date.now() + countdownSeconds * 1000);
+        await this.prisma.partyGameRound.update({
+            where: { id: roundId },
+            data: { phase: 'COUNTDOWN' },
+        });
+        const eventNumber = await this.sessionCache.incrementEventNumber(round.sessionId);
+        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(round.sessionId, roundId, 'COUNTDOWN', { countdownSeconds, countdownEndsAt: countdownEndsAt.toISOString() }, eventNumber));
+        this.scheduler.scheduleAutoClose(`party-countdown-${roundId}`, countdownSeconds * 1000, async () => {
+            await this.startInput(roundId, round.sessionId);
+        });
+        this.logger.log(`[PartyGames] Ronda ${roundId} → COUNTDOWN (${countdownSeconds}s)`);
+        return { status: 'ok' };
+    }
+    async startInput(roundId, sessionId) {
+        const round = await this.prisma.partyGameRound.findUnique({ where: { id: roundId } });
+        if (!round || round.phase !== 'COUNTDOWN')
+            return;
+        const inputStartedAt = new Date();
+        await this.prisma.partyGameRound.update({
+            where: { id: roundId },
+            data: { phase: 'INPUT' },
+        });
+        const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'INPUT', { inputStartedAt: inputStartedAt.toISOString() }, eventNumber));
+        this.scheduler.scheduleAutoClose(`party-input-${roundId}`, round.timeLimit * 1000, async () => {
+            await this.advanceToVoting(roundId, sessionId);
+        });
+        this.logger.log(`[PartyGames] Ronda ${roundId} → INPUT (timer ${round.timeLimit}s)`);
+    }
     async advancePhase(roundId) {
         const round = await this.getActiveRound(roundId);
-        if (round.phase === 'INPUT') {
+        if (round.phase === 'LOBBY') {
+            await this.startCountdown(round.id);
+        }
+        else if (round.phase === 'COUNTDOWN') {
+            throw new common_1.BadRequestException('La cuenta regresiva ya está en curso.');
+        }
+        else if (round.phase === 'INPUT') {
             await this.advanceToVoting(round.id, round.sessionId);
         }
         else if (round.phase === 'VOTING') {
@@ -230,6 +283,25 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         if (round.phase !== 'FINISHED') {
             await this.finishRound(round.id, round.sessionId);
         }
+    }
+    async endGame(sessionId) {
+        const session = await this.prisma.gameSession.findFirst({
+            where: { OR: [{ id: sessionId }, { bar: { slug: sessionId } }], isActive: true },
+        });
+        if (!session) {
+            throw new common_1.NotFoundException(`No se encontró sesión activa con id "${sessionId}".`);
+        }
+        const activeRound = await this.prisma.partyGameRound.findFirst({
+            where: { sessionId: session.id, phase: { not: 'FINISHED' } },
+        });
+        if (activeRound) {
+            await this.finishRound(activeRound.id, session.id);
+        }
+        const finalLeaderboard = await this.getLeaderboard(session.id);
+        const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+        this.eventEmitter.emit('party.game.over', new party_games_events_1.PartyGameOverEvent(session.id, 'PARTY_GAMES', finalLeaderboard, eventNumber));
+        this.logger.log(`[PartyGames] Juego finalizado en sesión ${session.id} — ganador: ${finalLeaderboard[0]?.nickname ?? 'N/A'}`);
+        return { status: 'ok', leaderboard: finalLeaderboard };
     }
     async advanceToVoting(roundId, sessionId) {
         const round = await this.prisma.partyGameRound.findUnique({
@@ -276,6 +348,7 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         });
         this.scheduler.cancelTimer(`party-input-${roundId}`);
         this.scheduler.cancelTimer(`party-voting-${roundId}`);
+        this.scheduler.cancelTimer(`party-countdown-${roundId}`);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         this.eventEmitter.emit('party.round.finished', new party_games_events_1.PartyRoundFinishedEvent(sessionId, roundId, eventNumber));
         this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'FINISHED', {}, eventNumber));
@@ -390,10 +463,14 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             }));
         }
         if (round.gameType === 'TUTI_FRUTI') {
-            const bastaSubmission = round.submissions.find((s) => s.isBasta);
-            return bastaSubmission
-                ? [{ id: bastaSubmission.id, answers: bastaSubmission.content?.answers, nickname: bastaSubmission.player?.nickname }]
-                : [];
+            return [...round.submissions]
+                .sort((a, b) => Number(b.isBasta) - Number(a.isBasta))
+                .map((s) => ({
+                id: s.id,
+                answers: s.content?.answers ?? {},
+                nickname: s.player?.nickname,
+                isBasta: s.isBasta,
+            }));
         }
         if (round.gameType === 'SOCIAL_JUDGMENT') {
             return round.submissions.map((s) => ({

@@ -10,6 +10,8 @@ import {
   PartyVoteCastEvent,
   PartyRoundResultEvent,
   PartyRoundFinishedEvent,
+  PartyBastaCalledEvent,
+  PartyGameOverEvent,
 } from './party-games.events';
 import { CreatePartyRoundDto } from './dto/create-round.dto';
 import { SubmitPartyInputDto } from './dto/submit-input.dto';
@@ -17,7 +19,7 @@ import { CastPartyVoteDto } from './dto/cast-vote.dto';
 import { BastaDto } from './dto/basta.dto';
 import { ManageCategoryDto } from './dto/manage-categories.dto';
 
-type GamePhase = 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
+type GamePhase = 'LOBBY' | 'COUNTDOWN' | 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
 
 // Categorías predefinidas del sistema
 const DEFAULT_CATEGORIES = [
@@ -137,11 +139,15 @@ export class PartyGamesService {
 
     const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
 
+    // Tuti Fruti nace en LOBBY (previa con categorías); el admin dispara el
+    // countdown que lo lleva a INPUT. El resto de los juegos nace en INPUT.
+    const isTutiFruti = dto.gameType === 'TUTI_FRUTI';
+
     const round = await this.prisma.partyGameRound.create({
       data: {
         sessionId: session.id,
         gameType: dto.gameType,
-        phase: 'INPUT',
+        phase: isTutiFruti ? 'LOBBY' : 'INPUT',
         prompt: dto.prompt,
         categories: dto.categories ? dto.categories : undefined,
         timeLimit: dto.timeLimit ?? 60,
@@ -155,14 +161,16 @@ export class PartyGamesService {
       new PartyRoundStartedEvent(session.id, roundPayload, eventNumber),
     );
 
-    // Programar auto-cierre de la fase INPUT por tiempo
-    this.scheduler.scheduleAutoClose(
-      `party-input-${round.id}`,
-      round.timeLimit * 1000,
-      async () => {
-        await this.advanceToVoting(round.id, session.id);
-      },
-    );
+    // El auto-cierre de INPUT solo se programa al entrar en INPUT (ver startInput).
+    if (!isTutiFruti) {
+      this.scheduler.scheduleAutoClose(
+        `party-input-${round.id}`,
+        round.timeLimit * 1000,
+        async () => {
+          await this.advanceToVoting(round.id, session.id);
+        },
+      );
+    }
 
     this.logger.log(`[PartyGames] Ronda ${round.id} (${dto.gameType}) iniciada en sesión ${session.id}`);
     return roundPayload;
@@ -200,8 +208,9 @@ export class PartyGamesService {
       new PartyInputSubmittedEvent(round.sessionId, round.id, submittedCount, totalPlayers, eventNumber),
     );
 
-    // Auto-avanzar si todos respondieron
-    if (submittedCount >= totalPlayers && totalPlayers > 0) {
+    // Auto-avanzar si todos respondieron. En TUTI_FRUTI no aplica: el autosave
+    // parcial ya crea submission, así que el corte es por BASTA o por timer.
+    if (round.gameType !== 'TUTI_FRUTI' && submittedCount >= totalPlayers && totalPlayers > 0) {
       this.scheduler.cancelTimer(`party-input-${round.id}`);
       await this.advanceToVoting(round.id, round.sessionId);
     }
@@ -219,28 +228,43 @@ export class PartyGamesService {
       throw new BadRequestException('BASTA solo es válido en el juego Tuti Fruti.');
     }
 
-    // Solo el primer BASTA congela el timer
-    const existingBasta = await this.prisma.partyGameSubmission.findFirst({
-      where: { roundId: round.id, isBasta: true },
-    });
+    // Transacción: el check de "ya hay BASTA" + el upsert son atómicos para
+    // que dos BASTA simultáneos no se marquen ambos como primero.
+    const isBasta = await this.prisma.$transaction(async (tx) => {
+      const existingBasta = await tx.partyGameSubmission.findFirst({
+        where: { roundId: round.id, isBasta: true },
+      });
+      const esPrimero = !existingBasta;
 
-    // Guardar la submission con isBasta = true solo si es el primero
-    const isBasta = !existingBasta;
+      await tx.partyGameSubmission.upsert({
+        where: { roundId_playerId: { roundId: round.id, playerId } },
+        update: { content: { answers: dto.answers }, isBasta: esPrimero || undefined },
+        create: {
+          roundId: round.id,
+          playerId,
+          content: { answers: dto.answers },
+          isBasta: esPrimero,
+        },
+      });
 
-    await this.prisma.partyGameSubmission.upsert({
-      where: { roundId_playerId: { roundId: round.id, playerId } },
-      update: { content: { answers: dto.answers }, isBasta: isBasta || undefined },
-      create: {
-        roundId: round.id,
-        playerId,
-        content: { answers: dto.answers },
-        isBasta,
-      },
+      return esPrimero;
     });
 
     if (isBasta) {
       this.scheduler.cancelTimer(`party-input-${round.id}`);
       this.logger.log(`[PartyGames] ¡BASTA! en ronda ${round.id} por jugador ${playerId}`);
+
+      // Broadcast global del BASTA (congela los inputs de todos al instante)
+      const player = await this.prisma.player.findUnique({
+        where: { id: playerId },
+        select: { nickname: true },
+      });
+      const eventNumber = await this.sessionCache.incrementEventNumber(round.sessionId);
+      this.eventEmitter.emit(
+        'party.basta.called',
+        new PartyBastaCalledEvent(round.sessionId, round.id, playerId, player?.nickname ?? 'Jugador', eventNumber),
+      );
+
       await this.advanceToVoting(round.id, round.sessionId);
     }
 
@@ -275,10 +299,84 @@ export class PartyGamesService {
     return { accepted: true };
   }
 
+  // Dispara la cuenta regresiva (3-2-1) desde LOBBY; al terminar entra a INPUT solo.
+  async startCountdown(roundId: string) {
+    const round = await this.getActiveRound(roundId);
+    if (round.phase !== 'LOBBY') {
+      throw new BadRequestException('La ronda no está en Lobby.');
+    }
+
+    const countdownSeconds = 3;
+    const countdownEndsAt = new Date(Date.now() + countdownSeconds * 1000);
+
+    await this.prisma.partyGameRound.update({
+      where: { id: roundId },
+      data: { phase: 'COUNTDOWN' },
+    });
+
+    const eventNumber = await this.sessionCache.incrementEventNumber(round.sessionId);
+    this.eventEmitter.emit(
+      'party.phase.changed',
+      new PartyPhaseChangedEvent(
+        round.sessionId,
+        roundId,
+        'COUNTDOWN',
+        { countdownSeconds, countdownEndsAt: countdownEndsAt.toISOString() },
+        eventNumber,
+      ),
+    );
+
+    this.scheduler.scheduleAutoClose(
+      `party-countdown-${roundId}`,
+      countdownSeconds * 1000,
+      async () => {
+        await this.startInput(roundId, round.sessionId);
+      },
+    );
+
+    this.logger.log(`[PartyGames] Ronda ${roundId} → COUNTDOWN (${countdownSeconds}s)`);
+    return { status: 'ok' };
+  }
+
+  // Entrada real a la fase INPUT: arranca el timer de la ronda.
+  private async startInput(roundId: string, sessionId: string) {
+    const round = await this.prisma.partyGameRound.findUnique({ where: { id: roundId } });
+    if (!round || round.phase !== 'COUNTDOWN') return;
+
+    const inputStartedAt = new Date();
+
+    await this.prisma.partyGameRound.update({
+      where: { id: roundId },
+      data: { phase: 'INPUT' },
+    });
+
+    const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+    this.eventEmitter.emit(
+      'party.phase.changed',
+      new PartyPhaseChangedEvent(sessionId, roundId, 'INPUT', { inputStartedAt: inputStartedAt.toISOString() }, eventNumber),
+    );
+
+    // Programar auto-cierre de INPUT por tiempo (arranca ahora, no en createRound)
+    this.scheduler.scheduleAutoClose(
+      `party-input-${roundId}`,
+      round.timeLimit * 1000,
+      async () => {
+        await this.advanceToVoting(roundId, sessionId);
+      },
+    );
+
+    this.logger.log(`[PartyGames] Ronda ${roundId} → INPUT (timer ${round.timeLimit}s)`);
+  }
+
   async advancePhase(roundId: string) {
     const round = await this.getActiveRound(roundId);
 
-    if (round.phase === 'INPUT') {
+    if (round.phase === 'LOBBY') {
+      await this.startCountdown(round.id);
+    } else if (round.phase === 'COUNTDOWN') {
+      // El backend avanza a INPUT solo; no se fuerza manualmente.
+      throw new BadRequestException('La cuenta regresiva ya está en curso.');
+    } else if (round.phase === 'INPUT') {
       await this.advanceToVoting(round.id, round.sessionId);
     } else if (round.phase === 'VOTING') {
       await this.advanceToReveal(round.id, round.sessionId);
@@ -294,6 +392,36 @@ export class PartyGamesService {
     if (round.phase !== 'FINISHED') {
       await this.finishRound(round.id, round.sessionId);
     }
+  }
+
+  // Finaliza el juego completo de la sesión (podio definitivo Top 10).
+  // Cierra cualquier ronda activa y emite el ranking final consolidado.
+  async endGame(sessionId: string) {
+    const session = await this.prisma.gameSession.findFirst({
+      where: { OR: [{ id: sessionId }, { bar: { slug: sessionId } }], isActive: true },
+    });
+    if (!session) {
+      throw new NotFoundException(`No se encontró sesión activa con id "${sessionId}".`);
+    }
+
+    // Cerrar la ronda activa si quedó alguna abierta
+    const activeRound = await this.prisma.partyGameRound.findFirst({
+      where: { sessionId: session.id, phase: { not: 'FINISHED' } },
+    });
+    if (activeRound) {
+      await this.finishRound(activeRound.id, session.id);
+    }
+
+    const finalLeaderboard = await this.getLeaderboard(session.id);
+    const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+
+    this.eventEmitter.emit(
+      'party.game.over',
+      new PartyGameOverEvent(session.id, 'PARTY_GAMES', finalLeaderboard, eventNumber),
+    );
+
+    this.logger.log(`[PartyGames] Juego finalizado en sesión ${session.id} — ganador: ${finalLeaderboard[0]?.nickname ?? 'N/A'}`);
+    return { status: 'ok', leaderboard: finalLeaderboard };
   }
 
   // ─── HELPERS INTERNOS DE FASES ──────────────────────────────────────────
@@ -364,6 +492,7 @@ export class PartyGamesService {
 
     this.scheduler.cancelTimer(`party-input-${roundId}`);
     this.scheduler.cancelTimer(`party-voting-${roundId}`);
+    this.scheduler.cancelTimer(`party-countdown-${roundId}`);
 
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
@@ -521,11 +650,16 @@ export class PartyGamesService {
     }
 
     if (round.gameType === 'TUTI_FRUTI') {
-      // Para Tuti Fruti, la "votación" es la visualización de respuestas del primer BASTA
-      const bastaSubmission = round.submissions.find((s: any) => s.isBasta);
-      return bastaSubmission
-        ? [{ id: bastaSubmission.id, answers: bastaSubmission.content?.answers, nickname: bastaSubmission.player?.nickname }]
-        : [];
+      // Todas las submissions (autosave parcial + BASTA) para la tabla comparativa
+      // en la TV. El que hizo BASTA va primero y queda marcado.
+      return [...round.submissions]
+        .sort((a: any, b: any) => Number(b.isBasta) - Number(a.isBasta))
+        .map((s: any) => ({
+          id: s.id,
+          answers: s.content?.answers ?? {},
+          nickname: s.player?.nickname,
+          isBasta: s.isBasta,
+        }));
     }
 
     if (round.gameType === 'SOCIAL_JUDGMENT') {

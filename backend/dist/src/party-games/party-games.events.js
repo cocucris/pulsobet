@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PartyRoundFinishedEvent = exports.PartyRoundResultEvent = exports.PartyVoteCastEvent = exports.PartyInputSubmittedEvent = exports.PartyPhaseChangedEvent = exports.PartyRoundStartedEvent = void 0;
+exports.PartyGameOverEvent = exports.PartyRoundFinishedEvent = exports.PartyRoundResultEvent = exports.PartyVoteCastEvent = exports.PartyInputSubmittedEvent = exports.PartyBastaCalledEvent = exports.PartyPhaseChangedEvent = exports.PartyRoundStartedEvent = void 0;
 class PartyRoundStartedEvent {
     sessionId;
     round;
@@ -27,6 +27,21 @@ class PartyPhaseChangedEvent {
     }
 }
 exports.PartyPhaseChangedEvent = PartyPhaseChangedEvent;
+class PartyBastaCalledEvent {
+    sessionId;
+    roundId;
+    playerId;
+    nickname;
+    eventNumber;
+    constructor(sessionId, roundId, playerId, nickname, eventNumber) {
+        this.sessionId = sessionId;
+        this.roundId = roundId;
+        this.playerId = playerId;
+        this.nickname = nickname;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.PartyBastaCalledEvent = PartyBastaCalledEvent;
 class PartyInputSubmittedEvent {
     sessionId;
     roundId;
@@ -81,4 +96,17 @@ class PartyRoundFinishedEvent {
     }
 }
 exports.PartyRoundFinishedEvent = PartyRoundFinishedEvent;
+class PartyGameOverEvent {
+    sessionId;
+    gameType;
+    finalLeaderboard;
+    eventNumber;
+    constructor(sessionId, gameType, finalLeaderboard, eventNumber) {
+        this.sessionId = sessionId;
+        this.gameType = gameType;
+        this.finalLeaderboard = finalLeaderboard;
+        this.eventNumber = eventNumber;
+    }
+}
+exports.PartyGameOverEvent = PartyGameOverEvent;
 //# sourceMappingURL=party-games.events.js.map

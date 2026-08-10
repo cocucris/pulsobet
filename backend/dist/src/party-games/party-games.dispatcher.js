@@ -104,6 +104,33 @@ let PartyGamesDispatcher = PartyGamesDispatcher_1 = class PartyGamesDispatcher {
             this.logger.error(`Error en handlePartyRoundFinished: ${e.message}`);
         }
     }
+    handlePartyBastaCalled(event) {
+        try {
+            this.logger.log(`[PartyDispatcher] PARTY_BASTA_CALLED (${event.nickname}) → sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'PARTY_BASTA_CALLED', {
+                roundId: event.roundId,
+                playerId: event.playerId,
+                nickname: event.nickname,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handlePartyBastaCalled: ${e.message}`);
+        }
+    }
+    handlePartyGameOver(event) {
+        try {
+            this.logger.log(`[PartyDispatcher] PARTY_GAME_OVER → sesión ${event.sessionId}`);
+            this.liveGateway.broadcastToSession(event.sessionId, 'PARTY_GAME_OVER', {
+                gameType: event.gameType,
+                leaderboard: event.finalLeaderboard,
+                eventNumber: event.eventNumber,
+            });
+        }
+        catch (e) {
+            this.logger.error(`Error en handlePartyGameOver: ${e.message}`);
+        }
+    }
 };
 exports.PartyGamesDispatcher = PartyGamesDispatcher;
 __decorate([
@@ -142,6 +169,18 @@ __decorate([
     __metadata("design:paramtypes", [party_games_events_1.PartyRoundFinishedEvent]),
     __metadata("design:returntype", void 0)
 ], PartyGamesDispatcher.prototype, "handlePartyRoundFinished", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('party.basta.called'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [party_games_events_1.PartyBastaCalledEvent]),
+    __metadata("design:returntype", void 0)
+], PartyGamesDispatcher.prototype, "handlePartyBastaCalled", null);
+__decorate([
+    (0, event_emitter_1.OnEvent)('party.game.over'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [party_games_events_1.PartyGameOverEvent]),
+    __metadata("design:returntype", void 0)
+], PartyGamesDispatcher.prototype, "handlePartyGameOver", null);
 exports.PartyGamesDispatcher = PartyGamesDispatcher = PartyGamesDispatcher_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)((0, common_1.forwardRef)(() => live_gateway_1.LiveGateway))),
