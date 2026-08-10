@@ -35,6 +35,7 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Letra aleatoria para Tuti Fruti
   const randomLetter = () => {
@@ -79,6 +80,7 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
     if (!prompt.trim() || loading) return;
     if (selectedGame === 'TUTI_FRUTI' && selectedCategories.length === 0) return;
     setLoading(true);
+    setError(null);
 
     const payload = {
       sessionId,
@@ -90,14 +92,24 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
 
     // Usar REST (más confiable para admin)
     try {
-      await fetch(`${API_URL}/party-games/rounds`, {
+      const res = await fetch(`${API_URL}/party-games/rounds`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message =
+          (body && (Array.isArray(body.message) ? body.message.join(' ') : body.message)) ||
+          `Error ${res.status} al iniciar la ronda.`;
+        setError(message);
+        return;
+      }
+      setPrompt('');
+    } catch {
+      setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
     } finally {
       setLoading(false);
-      setPrompt('');
     }
   };
 
@@ -339,6 +351,12 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
           >
             {loading ? 'Iniciando...' : `🚀 Iniciar ${GAME_LABELS[selectedGame].label}`}
           </button>
+
+          {error && (
+            <p className="text-red-400 text-sm font-semibold bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
         </>
       )}
     </div>

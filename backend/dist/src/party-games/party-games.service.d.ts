@@ -14,6 +14,7 @@ export declare class PartyGamesService {
     private scheduler;
     private readonly logger;
     constructor(prisma: PrismaService, sessionCache: RedisSessionCacheService, eventEmitter: EventEmitter2, scheduler: SessionScheduler);
+    private resolveBarId;
     getCategories(barId: string): Promise<{
         id: string;
         name: string;

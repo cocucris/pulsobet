@@ -42,22 +42,37 @@ export class PartyGamesService {
 
   // ─── GESTIÓN DE CATEGORÍAS TUTI FRUTI ────────────────────────────────────
 
+  // Resuelve el identificador recibido (id de Bar o slug) al id real del Bar.
+  // La FK de TutiFrutiCategory exige el id, no el slug.
+  private async resolveBarId(barIdOrSlug: string): Promise<string> {
+    const bar = await this.prisma.bar.findFirst({
+      where: { OR: [{ id: barIdOrSlug }, { slug: barIdOrSlug }] },
+      select: { id: true },
+    });
+    if (!bar) {
+      throw new NotFoundException(`No se encontró el bar "${barIdOrSlug}".`);
+    }
+    return bar.id;
+  }
+
   async getCategories(barId: string) {
+    const realBarId = await this.resolveBarId(barId);
     // Asegurar que el bar tenga las categorías por defecto
-    await this.ensureDefaultCategories(barId);
+    await this.ensureDefaultCategories(realBarId);
 
     return this.prisma.tutiFrutiCategory.findMany({
-      where: { barId },
+      where: { barId: realBarId },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     });
   }
 
   async addCategory(barId: string, dto: ManageCategoryDto) {
+    const realBarId = await this.resolveBarId(barId);
     return this.prisma.tutiFrutiCategory.upsert({
-      where: { barId_name: { barId, name: dto.name } },
+      where: { barId_name: { barId: realBarId, name: dto.name } },
       update: {},
       create: {
-        barId,
+        barId: realBarId,
         name: dto.name,
         isDefault: dto.isDefault ?? false,
       },
@@ -65,10 +80,11 @@ export class PartyGamesService {
   }
 
   async deleteCategory(barId: string, categoryId: string) {
+    const realBarId = await this.resolveBarId(barId);
     const cat = await this.prisma.tutiFrutiCategory.findUnique({
       where: { id: categoryId },
     });
-    if (!cat || cat.barId !== barId) {
+    if (!cat || cat.barId !== realBarId) {
       throw new NotFoundException('Categoría no encontrada para este bar.');
     }
     return this.prisma.tutiFrutiCategory.delete({ where: { id: categoryId } });

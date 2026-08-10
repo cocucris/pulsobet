@@ -37,29 +37,42 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         this.eventEmitter = eventEmitter;
         this.scheduler = scheduler;
     }
+    async resolveBarId(barIdOrSlug) {
+        const bar = await this.prisma.bar.findFirst({
+            where: { OR: [{ id: barIdOrSlug }, { slug: barIdOrSlug }] },
+            select: { id: true },
+        });
+        if (!bar) {
+            throw new common_1.NotFoundException(`No se encontró el bar "${barIdOrSlug}".`);
+        }
+        return bar.id;
+    }
     async getCategories(barId) {
-        await this.ensureDefaultCategories(barId);
+        const realBarId = await this.resolveBarId(barId);
+        await this.ensureDefaultCategories(realBarId);
         return this.prisma.tutiFrutiCategory.findMany({
-            where: { barId },
+            where: { barId: realBarId },
             orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
         });
     }
     async addCategory(barId, dto) {
+        const realBarId = await this.resolveBarId(barId);
         return this.prisma.tutiFrutiCategory.upsert({
-            where: { barId_name: { barId, name: dto.name } },
+            where: { barId_name: { barId: realBarId, name: dto.name } },
             update: {},
             create: {
-                barId,
+                barId: realBarId,
                 name: dto.name,
                 isDefault: dto.isDefault ?? false,
             },
         });
     }
     async deleteCategory(barId, categoryId) {
+        const realBarId = await this.resolveBarId(barId);
         const cat = await this.prisma.tutiFrutiCategory.findUnique({
             where: { id: categoryId },
         });
-        if (!cat || cat.barId !== barId) {
+        if (!cat || cat.barId !== realBarId) {
             throw new common_1.NotFoundException('Categoría no encontrada para este bar.');
         }
         return this.prisma.tutiFrutiCategory.delete({ where: { id: categoryId } });
