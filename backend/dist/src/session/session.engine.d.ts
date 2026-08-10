@@ -118,4 +118,8 @@ export declare class SessionEngine {
     private getLeaderboard;
     private enrichCardForSnapshot;
     private enrichQuestionStats;
+    setMode(sessionId: string, mode: string): Promise<{
+        status: string;
+        mode: string;
+    }>;
 }

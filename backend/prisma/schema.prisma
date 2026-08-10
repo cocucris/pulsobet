@@ -34,6 +34,7 @@ model Bar {
   screens     TvScreen[]    // Pantallas vinculadas en el local
   rewards     Reward[]      // Catálogo de premios (cervezas, picadas, etc.)
   sessions    GameSession[] // Sesiones de juego por noche/evento
+  tutiFrutiCategories TutiFrutiCategory[] // Banco de categorías para Tuti Fruti
 }
 
 model User {
@@ -94,24 +95,27 @@ model GameSession {
   bar          Bar           @relation(fields: [barId], references: [id], onDelete: Cascade)
   matchId      String?
   status       SessionStatus @default(LIVE)
-  mode         String        @default("MATCH") // "MATCH" (trivias de fútbol) | "CARDS" (fichaje)
+  mode         String        @default("MATCH") // "MATCH" (trivias de fútbol) | "CARDS" (fichaje) | "PARTY_GAMES"
   date         DateTime      @default(now())
   isActive     Boolean       @default(true)
   players      Player[]
   profileCards ProfileCard[]
+  partyRounds  PartyGameRound[] // Rondas de Party Games de la sesión
 }
 
 model Player {
-  id          String        @id @default(uuid())
-  sessionId   String
-  session     GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  nickname    String        // Apodo que ingresa el cliente al escanear el QR
-  tableNumber String?       // Extraído opcionalmente del parámetro del QR (?mesa=12)
-  totalPoints Int           @default(0)
-  streakCount Int           @default(0)  // Multiplicador dinámico por aciertos consecutivos
-  predictions Prediction[]
-  claims      RewardClaim[]
-  
+  id               String        @id @default(uuid())
+  sessionId        String
+  session          GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nickname         String        // Apodo que ingresa el cliente al escanear el QR
+  tableNumber      String?       // Extraído opcionalmente del parámetro del QR (?mesa=12)
+  totalPoints      Int           @default(0)
+  streakCount      Int           @default(0)  // Multiplicador dinámico por aciertos consecutivos
+  predictions      Prediction[]
+  claims           RewardClaim[]
+  partySubmissions PartyGameSubmission[] // Respuestas a rondas de Party Games
+  partyVotesCast   PartyGameVote[]       @relation("PartyGameVoter") // Votos emitidos en Party Games
+
   @@unique([sessionId, nickname]) // Evita duplicados conflictivos en la misma noche
 }
 
@@ -189,4 +193,63 @@ model CardVote {
   createdAt DateTime   @default(now())
 
   @@unique([cardId, playerId]) // Un voto por persona por ficha (re-votar = cambiar voto)
+}
+
+// ─── PARTY GAMES ─────────────────────────────────────────────────────────────
+
+// Banco de categorías para Tuti Fruti (predefinidas del sistema + custom del bar)
+model TutiFrutiCategory {
+  id        String   @id @default(uuid())
+  barId     String
+  bar       Bar      @relation(fields: [barId], references: [id], onDelete: Cascade)
+  name      String   // Ej: "País", "Animal", "Tragos del Bar"
+  isDefault Boolean  @default(false) // true = categoría del banco estándar
+  createdAt DateTime @default(now())
+
+  @@unique([barId, name])
+}
+
+// Ronda de juego de Party Games (padre de submissions y votos)
+model PartyGameRound {
+  id          String    @id @default(uuid())
+  sessionId   String
+  session     GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  gameType    String    // "BLUFFING" | "TUTI_FRUTI" | "SOCIAL_JUDGMENT"
+  phase       String    @default("INPUT")  // "INPUT" | "VOTING" | "REVEAL" | "FINISHED"
+  prompt      String    // Texto principal: premisa (Mentiroso), letra (Tuti Fruti), consigna (Social)
+  categories  Json?     // Para TUTI_FRUTI: máx 4 strings ["País", "Animal", ...]
+  timeLimit   Int       @default(60)
+  createdAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  submissions PartyGameSubmission[]
+  votes       PartyGameVote[]
+}
+
+// Respuesta de un jugador a una ronda — también registra los puntos ganados
+model PartyGameSubmission {
+  id           String         @id @default(uuid())
+  roundId      String
+  round        PartyGameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  playerId     String
+  player       Player         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  content      Json           // { text } | { answers: Record<string,string> } | { targetPlayerId }
+  isBasta      Boolean        @default(false) // Tuti Fruti: primer jugador en presionar BASTA
+  pointsEarned Int            @default(0)     // Puntos asignados al cerrar la ronda
+  pointsSource String?        // "BLUFFING_GUESS" | "BLUFFING_TRICK" | "TUTI_BASTA" | "TUTI_UNIQUE" | "TUTI_SHARED" | "SOCIAL_TOP"
+  createdAt    DateTime       @default(now())
+
+  @@unique([roundId, playerId])
+}
+
+// Voto emitido en la fase de votación de una ronda
+model PartyGameVote {
+  id        String         @id @default(uuid())
+  roundId   String
+  round     PartyGameRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  voterId   String
+  voter     Player         @relation("PartyGameVoter", fields: [voterId], references: [id])
+  targetId  String         // submissionId (Mentiroso) o playerId (Juicio Social)
+  createdAt DateTime       @default(now())
+
+  @@unique([roundId, voterId])
 }

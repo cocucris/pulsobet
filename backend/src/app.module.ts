@@ -9,10 +9,12 @@ import { AuthModule } from './auth/auth.module';
 import { RedisModule } from './redis/redis.module';
 import { SessionModule } from './session/session.module';
 import { CardsModule } from './cards/cards.module';
+import { PartyGamesModule } from './party-games/party-games.module';
 
 @Module({
-  imports: [PrismaModule, BarModule, MatchModule, LiveModule, AuthModule, RedisModule, SessionModule, CardsModule],
+  imports: [PrismaModule, BarModule, MatchModule, LiveModule, AuthModule, RedisModule, SessionModule, CardsModule, PartyGamesModule],
   controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}
+

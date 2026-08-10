@@ -5,6 +5,6 @@ export class SetModeDto {
   sessionId: string;
 
   @IsString()
-  @IsIn(['MATCH', 'CARDS'])
-  mode: 'MATCH' | 'CARDS';
+  @IsIn(['MATCH', 'CARDS', 'PARTY_GAMES'])
+  mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES';
 }

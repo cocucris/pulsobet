@@ -59,6 +59,6 @@ export declare class CardsController {
     }>;
     setMode(dto: SetModeDto): Promise<{
         status: string;
-        mode: "MATCH" | "CARDS";
+        mode: "MATCH" | "CARDS" | "PARTY_GAMES";
     }>;
 }

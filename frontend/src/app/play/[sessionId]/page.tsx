@@ -6,6 +6,7 @@ import { useSessionStore } from '@/store/useSessionStore';
 import { useParams, useSearchParams } from 'next/navigation';
 import { API_URL } from '@/config/api';
 import { CardMode } from './components/CardMode';
+import { PartyGamesController } from './components/PartyGamesController';
 
 export default function PlayPage() {
   const params = useParams();
@@ -143,7 +144,7 @@ export default function PlayPage() {
   const [triviaTab, setTriviaTab] = useState<'play' | 'results'>('play');
 
   // Hook WebSockets
-  const { sendPrediction, reconnectWithToken } = useSocket(sessionId, false, false);
+  const { sendPrediction, reconnectWithToken, emitPartyEvent } = useSocket(sessionId, false, false);
 
   const snapshot = useSessionStore((s) => s.snapshot);
   const isConnected = useSessionStore((s) => s.isConnected);
@@ -392,8 +393,12 @@ export default function PlayPage() {
         </section>
       )}
 
-      {/* Contenido Dinámico: MODO FICHAJE o MODO PARTIDO (trivias) */}
-      {snapshot?.mode === 'CARDS' ? (
+      {/* Contenido Dinámico: PARTY GAMES | MODO FICHAJE | MODO PARTIDO (trivias) */}
+      {snapshot?.mode === 'PARTY_GAMES' ? (
+        <div className="w-full my-2">
+          <PartyGamesController socket={{ emit: emitPartyEvent }} />
+        </div>
+      ) : snapshot?.mode === 'CARDS' ? (
         <div className="w-full my-2 flex flex-col items-center justify-center">
           <CardMode sessionId={sessionId} playerId={playerId} tableNumber={tableNumber} />
         </div>

@@ -1,4 +1,4 @@
 export declare class SetModeDto {
     sessionId: string;
-    mode: 'MATCH' | 'CARDS';
+    mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES';
 }

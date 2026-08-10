@@ -8,6 +8,7 @@ import { API_URL } from '@/config/api';
 
 import { useSessionStore } from '@/store/useSessionStore';
 import { CardDisplay } from './components/CardDisplay';
+import { PartyGamesDisplay } from './components/PartyGamesDisplay';
 
 // Imágenes predeterminadas de respaldo por si no se adjunta flyer
 const DEFAULT_IMAGES = [
@@ -195,8 +196,12 @@ export default function TvPage() {
         </div>
       </section>
 
-      {/* SECCIÓN DERECHA: MODO FICHAJE (cromo) o MODO PARTIDO (trivias) */}
-      {snapshot?.mode === 'CARDS' ? (
+      {/* SECCIÓN DERECHA: MODO PARTY GAMES | MODO FICHAJE (cromo) | MODO PARTIDO (trivias) */}
+      {snapshot?.mode === 'PARTY_GAMES' ? (
+        <section className="w-2/3 flex flex-col bg-slate-900/30 border border-slate-800/80 rounded-3xl overflow-hidden">
+          <PartyGamesDisplay />
+        </section>
+      ) : snapshot?.mode === 'CARDS' ? (
         <CardDisplay />
       ) : (
       <section className="w-2/3 flex flex-col justify-between bg-slate-900/30 border border-slate-800/80 rounded-3xl p-6 relative overflow-hidden">

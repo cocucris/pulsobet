@@ -59,8 +59,8 @@ export declare class CardsService {
         };
         totalVotes: number;
     }>;
-    setMode(sessionId: string, mode: 'MATCH' | 'CARDS'): Promise<{
+    setMode(sessionId: string, mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES'): Promise<{
         status: string;
-        mode: "MATCH" | "CARDS";
+        mode: "MATCH" | "CARDS" | "PARTY_GAMES";
     }>;
 }

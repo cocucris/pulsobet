@@ -137,6 +137,13 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       'CARD_PUBLISHED',
       'CARD_VOTE_UPDATED',
       'CARD_CLOSED',
+      // Party Games events
+      'PARTY_ROUND_STARTED',
+      'PARTY_PHASE_CHANGED',
+      'PARTY_INPUT_PROGRESS',
+      'PARTY_VOTE_UPDATED',
+      'PARTY_ROUND_RESULT',
+      'PARTY_ROUND_FINISHED',
       // compatibilidad
       'leaderboard_update',
       'match_score_update',
@@ -187,8 +194,15 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     }
   }, []);
 
+  const emitPartyEvent = useCallback((event: string, data: any) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit(event, data);
+    }
+  }, []);
+
   return {
     sendPrediction,
     reconnectWithToken,
+    emitPartyEvent,
   };
 };

@@ -120,6 +120,23 @@ export interface SessionSnapshot {
     }[];
   } | null;
 
+  partyGame: {
+    activeRound: {
+      id: string;
+      gameType: 'BLUFFING' | 'TUTI_FRUTI' | 'SOCIAL_JUDGMENT';
+      phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
+      prompt: string;
+      categories: string[] | null;
+      timeLimit: number;
+      createdAt: string;
+      submittedCount: number;
+      totalPlayers: number;
+      options: any[];
+    } | null;
+    mySubmission: any | null;
+    myVote: string | null;
+  };
+
   connectionStatus: 'connected';
 }
 
@@ -380,6 +397,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 myCardVotes: {},
                 votingClosed: false,
                 votingResults: null,
+                partyGame: { activeRound: null, mySubmission: null, myVote: null },
               }
             : snapshot,
           lastEventNumber: nextEventNumber,
@@ -463,6 +481,109 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
             votingClosed: true,
             votingResults: payload?.results || null,
             activeCards: [],
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
+      // ─── PARTY GAMES EVENTS ─────────────────────────────────────────────
+
+      case 'PARTY_ROUND_STARTED':
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              activeRound: payload?.round ?? null,
+              mySubmission: null,
+              myVote: null,
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
+      case 'PARTY_PHASE_CHANGED': {
+        const currentRound = snapshot.partyGame?.activeRound;
+        if (!currentRound || currentRound.id !== payload?.roundId) break;
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              activeRound: {
+                ...currentRound,
+                phase: payload.phase,
+                ...(payload.payload?.options ? { options: payload.payload.options } : {}),
+              },
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
+      case 'PARTY_INPUT_PROGRESS': {
+        const round = snapshot.partyGame?.activeRound;
+        if (!round || round.id !== payload?.roundId) break;
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              activeRound: {
+                ...round,
+                submittedCount: payload.submittedCount,
+                totalPlayers: payload.totalPlayers,
+              },
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
+      case 'PARTY_VOTE_UPDATED': {
+        const round = snapshot.partyGame?.activeRound;
+        if (!round || round.id !== payload?.roundId) break;
+        // Actualizar conteos de votos en las opciones actuales
+        const updatedOptions = (round.options || []).map((opt: any) => {
+          const voteEntry = (payload.votes || []).find((v: any) => v.targetId === opt.id);
+          return voteEntry ? { ...opt, votes: voteEntry.count } : opt;
+        });
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              activeRound: { ...round, options: updatedOptions },
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
+      case 'PARTY_ROUND_RESULT':
+        set({
+          snapshot: {
+            ...snapshot,
+            leaderboardTop10: payload.leaderboard || snapshot.leaderboardTop10,
+            partyGame: {
+              ...snapshot.partyGame,
+              activeRound: snapshot.partyGame?.activeRound
+                ? { ...snapshot.partyGame.activeRound, phase: 'REVEAL' }
+                : null,
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+
+      case 'PARTY_ROUND_FINISHED':
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: { activeRound: null, mySubmission: null, myVote: null },
           },
           lastEventNumber: nextEventNumber,
         });

@@ -9,6 +9,7 @@ import { TriviaControl } from './components/TriviaControl';
 import { RewardValidator } from './components/RewardValidator';
 import { AnalyticsWidget } from './components/AnalyticsWidget';
 import { CardsControl } from './components/CardsControl';
+import { PartyGamesControl } from './components/PartyGamesControl';
 import { API_URL } from '@/config/api';
 
 export default function AdminBarPage() {
@@ -23,6 +24,7 @@ export default function AdminBarPage() {
   useSocket(socketSessionId, false, true);
 
   const isConnected = useSessionStore((s) => s.isConnected);
+  const sessionMode = useSessionStore((s) => s.snapshot?.mode);
 
   useEffect(() => {
     // Hidratar snapshot inicial si no ha llegado por socket
@@ -68,6 +70,12 @@ export default function AdminBarPage() {
       <div className="max-w-5xl mx-auto mt-8">
         <CardsControl sessionId={socketSessionId} />
       </div>
+
+      {sessionMode === 'PARTY_GAMES' && (
+        <div className="max-w-5xl mx-auto mt-8">
+          <PartyGamesControl barId={barId} sessionId={socketSessionId} socket={null} />
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto mt-8">
         <ScoreBoardControl sessionId={socketSessionId} />

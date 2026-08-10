@@ -218,6 +218,58 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             });
             myCardVotes = Object.fromEntries(votes.map((v) => [v.cardId, v.choice]));
         }
+        let partyGame = { activeRound: null, mySubmission: null, myVote: null };
+        try {
+            const activePartyRound = await this.prisma.partyGameRound.findFirst({
+                where: { sessionId: actualSessionId, phase: { not: 'FINISHED' } },
+                include: {
+                    submissions: { include: { player: { select: { id: true, nickname: true } } } },
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+            if (activePartyRound) {
+                const submittedCount = activePartyRound.submissions.length;
+                const totalPlayers = await this.prisma.player.count({ where: { sessionId: actualSessionId } });
+                let options = [];
+                if (activePartyRound.phase === 'VOTING' || activePartyRound.phase === 'REVEAL') {
+                    if (activePartyRound.gameType === 'BLUFFING') {
+                        options = [...activePartyRound.submissions]
+                            .sort(() => Math.random() - 0.5)
+                            .map((s) => ({ id: s.id, text: s.content?.text ?? '' }));
+                    }
+                    else if (activePartyRound.gameType === 'TUTI_FRUTI') {
+                        const basta = activePartyRound.submissions.find((s) => s.isBasta);
+                        options = basta ? [{ id: basta.id, answers: basta.content?.answers, nickname: basta.player?.nickname }] : [];
+                    }
+                    else if (activePartyRound.gameType === 'SOCIAL_JUDGMENT') {
+                        options = activePartyRound.submissions.map((s) => ({ id: s.playerId, nickname: s.player?.nickname }));
+                    }
+                }
+                partyGame.activeRound = {
+                    id: activePartyRound.id,
+                    gameType: activePartyRound.gameType,
+                    phase: activePartyRound.phase,
+                    prompt: activePartyRound.prompt,
+                    categories: activePartyRound.categories,
+                    timeLimit: activePartyRound.timeLimit,
+                    createdAt: activePartyRound.createdAt.toISOString(),
+                    submittedCount,
+                    totalPlayers,
+                    options,
+                };
+                if (playerId) {
+                    const mySubmission = activePartyRound.submissions.find((s) => s.playerId === playerId);
+                    partyGame.mySubmission = mySubmission ? { content: mySubmission.content, isBasta: mySubmission.isBasta } : null;
+                    const myVote = await this.prisma.partyGameVote.findUnique({
+                        where: { roundId_voterId: { roundId: activePartyRound.id, voterId: playerId } },
+                    });
+                    partyGame.myVote = myVote?.targetId ?? null;
+                }
+            }
+        }
+        catch (err) {
+            this.logger.warn(`Error al construir partyGame en snapshot: ${err.message}`);
+        }
         return {
             sessionId: actualSessionId,
             barId: session.barId,
@@ -238,6 +290,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             myCardVotes,
             votingClosed: false,
             votingResults: null,
+            partyGame,
             barSettings: {
                 name: session.bar?.name || 'PulsoBet Bar',
                 slug: session.bar?.slug || 'pulsobet',
@@ -663,6 +716,17 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             expiresAt: question.expiresAt,
             totalVotes,
         };
+    }
+    async setMode(sessionId, mode) {
+        const session = await this.ensureSession(sessionId);
+        await this.prisma.gameSession.update({
+            where: { id: session.id },
+            data: { mode },
+        });
+        await this.sessionCache.setMode(session.id, mode);
+        const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+        this.eventEmitter.emit('session.mode.changed', new session_events_1.SessionModeChangedEvent(session.id, mode, eventNumber));
+        return { status: 'success', mode };
     }
 };
 exports.SessionEngine = SessionEngine;

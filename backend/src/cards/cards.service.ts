@@ -261,7 +261,7 @@ export class CardsService {
 
   // ─── MODO DE LA SESIÓN (admin) ───────────────────────────────────────
 
-  async setMode(sessionId: string, mode: 'MATCH' | 'CARDS') {
+  async setMode(sessionId: string, mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES') {
     const session = await this.resolveActiveSession(sessionId);
 
     await this.prisma.gameSession.update({

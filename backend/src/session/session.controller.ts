@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
 import { SessionEngine } from './session.engine';
 
 @Controller('session')
@@ -11,6 +11,21 @@ export class SessionController {
     @Query('playerId') playerId?: string,
   ) {
     return this.sessionEngine.buildSnapshot(sessionId, playerId);
+  }
+
+  @Patch(':sessionId/mode')
+  async updateModeByParam(
+    @Param('sessionId') sessionId: string,
+    @Body() body: { mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES' },
+  ) {
+    return this.sessionEngine.setMode(sessionId, body.mode);
+  }
+
+  @Patch('mode')
+  async updateModeByBody(
+    @Body() body: { sessionId: string; mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES' },
+  ) {
+    return this.sessionEngine.setMode(body.sessionId, body.mode);
   }
 
   @Post('start-match')

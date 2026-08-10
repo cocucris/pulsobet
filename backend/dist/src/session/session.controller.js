@@ -23,6 +23,12 @@ let SessionController = class SessionController {
     async getSnapshot(sessionId, playerId) {
         return this.sessionEngine.buildSnapshot(sessionId, playerId);
     }
+    async updateModeByParam(sessionId, body) {
+        return this.sessionEngine.setMode(sessionId, body.mode);
+    }
+    async updateModeByBody(body) {
+        return this.sessionEngine.setMode(body.sessionId, body.mode);
+    }
     async startMatch(body) {
         return this.sessionEngine.startMatch(body.sessionId, body.homeTeam, body.awayTeam, body.status || 'SCHEDULED');
     }
@@ -42,6 +48,21 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], SessionController.prototype, "getSnapshot", null);
+__decorate([
+    (0, common_1.Patch)(':sessionId/mode'),
+    __param(0, (0, common_1.Param)('sessionId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], SessionController.prototype, "updateModeByParam", null);
+__decorate([
+    (0, common_1.Patch)('mode'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SessionController.prototype, "updateModeByBody", null);
 __decorate([
     (0, common_1.Post)('start-match'),
     __param(0, (0, common_1.Body)()),

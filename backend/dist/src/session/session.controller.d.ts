@@ -3,6 +3,19 @@ export declare class SessionController {
     private readonly sessionEngine;
     constructor(sessionEngine: SessionEngine);
     getSnapshot(sessionId: string, playerId?: string): Promise<import("./session.snapshot").SessionSnapshot>;
+    updateModeByParam(sessionId: string, body: {
+        mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES';
+    }): Promise<{
+        status: string;
+        mode: string;
+    }>;
+    updateModeByBody(body: {
+        sessionId: string;
+        mode: 'MATCH' | 'CARDS' | 'PARTY_GAMES';
+    }): Promise<{
+        status: string;
+        mode: string;
+    }>;
     startMatch(body: {
         sessionId: string;
         homeTeam: string;

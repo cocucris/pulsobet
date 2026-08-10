@@ -31,7 +31,7 @@ export function CardsControl({ sessionId }: { sessionId: string }) {
     }
   }, [mode, fetchPending, pendingCardsCount]);
 
-  const handleSetMode = async (newMode: 'MATCH' | 'CARDS') => {
+  const handleSetMode = async (newMode: 'MATCH' | 'CARDS' | 'PARTY_GAMES') => {
     if (newMode === mode) return;
     try {
       setIsLoading(true);
@@ -108,7 +108,7 @@ export function CardsControl({ sessionId }: { sessionId: string }) {
       {/* Switch de modo */}
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-lg font-bold flex items-center gap-2 text-pink-400">
-          💘 Modo Fichaje / ⚽ Modo Partido
+          ⚙️ Selector de Modo de Pantalla
         </h2>
         <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-700">
           <button
@@ -130,6 +130,16 @@ export function CardsControl({ sessionId }: { sessionId: string }) {
             }`}
           >
             💘 Fichaje {pendingCardsCount > 0 ? `(${pendingCardsCount})` : ''}
+          </button>
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => handleSetMode('PARTY_GAMES')}
+            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+              mode === 'PARTY_GAMES' ? 'bg-purple-600 text-white shadow animate-pulse' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            🎮 Party Games
           </button>
         </div>
       </div>

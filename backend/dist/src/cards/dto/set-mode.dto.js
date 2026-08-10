@@ -22,7 +22,7 @@ __decorate([
 ], SetModeDto.prototype, "sessionId", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsIn)(['MATCH', 'CARDS']),
+    (0, class_validator_1.IsIn)(['MATCH', 'CARDS', 'PARTY_GAMES']),
     __metadata("design:type", String)
 ], SetModeDto.prototype, "mode", void 0);
 //# sourceMappingURL=set-mode.dto.js.map

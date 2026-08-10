@@ -117,5 +117,23 @@ export interface SessionSnapshot {
     }[];
   } | null;
 
+  partyGame: {
+    activeRound: {
+      id: string;
+      gameType: 'BLUFFING' | 'TUTI_FRUTI' | 'SOCIAL_JUDGMENT';
+      phase: 'INPUT' | 'VOTING' | 'REVEAL' | 'FINISHED';
+      prompt: string;
+      categories: string[] | null;
+      timeLimit: number;
+      createdAt: string;
+      submittedCount: number;
+      totalPlayers: number;
+      options: any[]; // Opciones de votación (disponibles en fase VOTING+)
+    } | null;
+    mySubmission: any | null;
+    myVote: string | null;
+  };
+
   connectionStatus: 'connected';
 }
+
