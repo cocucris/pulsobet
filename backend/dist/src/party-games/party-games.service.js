@@ -173,18 +173,31 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         if (round.gameType !== 'TUTI_FRUTI') {
             throw new common_1.BadRequestException('BASTA solo es válido en el juego Tuti Fruti.');
         }
+        const tieneRespuestas = Object.values(dto.answers ?? {}).some((a) => String(a).trim() !== '');
+        if (!tieneRespuestas) {
+            throw new common_1.BadRequestException('Completá al menos una categoría antes de gritar BASTA.');
+        }
         const isBasta = await this.prisma.$transaction(async (tx) => {
             const existingBasta = await tx.partyGameSubmission.findFirst({
                 where: { roundId: round.id, isBasta: true },
             });
             const esPrimero = !existingBasta;
+            const previa = await tx.partyGameSubmission.findUnique({
+                where: { roundId_playerId: { roundId: round.id, playerId } },
+            });
+            const prevAnswers = previa?.content?.answers ?? {};
+            const mergedAnswers = { ...prevAnswers };
+            for (const [cat, val] of Object.entries(dto.answers ?? {})) {
+                if (String(val).trim() !== '')
+                    mergedAnswers[cat] = val;
+            }
             await tx.partyGameSubmission.upsert({
                 where: { roundId_playerId: { roundId: round.id, playerId } },
-                update: { content: { answers: dto.answers }, isBasta: esPrimero || undefined },
+                update: { content: { answers: mergedAnswers }, isBasta: esPrimero || undefined },
                 create: {
                     roundId: round.id,
                     playerId,
-                    content: { answers: dto.answers },
+                    content: { answers: mergedAnswers },
                     isBasta: esPrimero,
                 },
             });

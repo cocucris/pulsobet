@@ -82,10 +82,15 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
 
   const handleBasta = () => {
     if (sending || !inputsEnabled) return;
+    // No permitir BASTA sin al menos una respuesta
+    const hasContent = Object.values(answers).some((a) => a.trim() !== '');
+    if (!hasContent) return;
     setSending(true);
     socket?.emit('PARTY_BASTA', { roundId: round.id, answers });
     setTimeout(() => setSending(false), 1500);
   };
+
+  const hasAnyAnswer = Object.values(answers).some((a) => a.trim() !== '');
 
   // Pantalla de éxito tras enviar (propia submission confirmada)
   if (mySubmission) {
@@ -188,7 +193,7 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
         <button
           id="tuti-basta-btn"
           onClick={handleBasta}
-          disabled={sending || !inputsEnabled}
+          disabled={sending || !inputsEnabled || !hasAnyAnswer}
           className="w-full py-5 bg-emerald-400 text-black font-black text-2xl rounded-2xl active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-emerald-400/30 mt-2"
         >
           {sending ? 'Enviando...' : '🛑 ¡BASTA!'}

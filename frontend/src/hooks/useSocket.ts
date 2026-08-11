@@ -8,6 +8,8 @@ export type VoteResult = { ok: boolean; reason?: string };
 export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: boolean = false) => {
   const socketRef = useRef<Socket | null>(null);
   const voteCallbacksRef = useRef(new Map<string, (result: VoteResult) => void>());
+  // Cola de eventos Party pendientes de envío (declarada antes del useEffect que la usa)
+  const partyQueueRef = useRef<{ event: string; data: any }[]>([]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -49,12 +51,21 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
 
       const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
       socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+
+      // Reenviar eventos Party encolados mientras estaba desconectado
+      const queued = partyQueueRef.current;
+      partyQueueRef.current = [];
+      queued.forEach(({ event, data }) => socket.emit(event, data));
     });
 
     socket.on('reconnect', () => {
       useSessionStore.getState().setConnected(true);
       const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
       socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+
+      const queued = partyQueueRef.current;
+      partyQueueRef.current = [];
+      queued.forEach(({ event, data }) => socket.emit(event, data));
     });
 
     socket.on('connect_error', () => {
@@ -199,6 +210,12 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
   const emitPartyEvent = useCallback((event: string, data: any) => {
     if (socketRef.current?.connected) {
       socketRef.current.emit(event, data);
+    } else {
+      // Encolar para reenviar al reconectar (máx 50 para no acumular basura).
+      // Sin esto, un BASTA durante una microcaída/reconexión se perdía en silencio.
+      if (partyQueueRef.current.length < 50) {
+        partyQueueRef.current.push({ event, data });
+      }
     }
   }, []);
 

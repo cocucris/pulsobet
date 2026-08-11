@@ -228,6 +228,12 @@ export class PartyGamesService {
       throw new BadRequestException('BASTA solo es válido en el juego Tuti Fruti.');
     }
 
+    // No permitir BASTA sin ninguna respuesta (evita cortes vacíos)
+    const tieneRespuestas = Object.values(dto.answers ?? {}).some((a) => String(a).trim() !== '');
+    if (!tieneRespuestas) {
+      throw new BadRequestException('Completá al menos una categoría antes de gritar BASTA.');
+    }
+
     // Transacción: el check de "ya hay BASTA" + el upsert son atómicos para
     // que dos BASTA simultáneos no se marquen ambos como primero.
     const isBasta = await this.prisma.$transaction(async (tx) => {
@@ -236,13 +242,25 @@ export class PartyGamesService {
       });
       const esPrimero = !existingBasta;
 
+      // No pisar respuestas buenas con vacías: mergear con el autosave previo.
+      // Si el BASTA llega con una categoría vacía pero el autosave ya la tenía,
+      // se conserva la del autosave.
+      const previa = await tx.partyGameSubmission.findUnique({
+        where: { roundId_playerId: { roundId: round.id, playerId } },
+      });
+      const prevAnswers = (previa?.content as any)?.answers ?? {};
+      const mergedAnswers: Record<string, string> = { ...prevAnswers };
+      for (const [cat, val] of Object.entries(dto.answers ?? {})) {
+        if (String(val).trim() !== '') mergedAnswers[cat] = val;
+      }
+
       await tx.partyGameSubmission.upsert({
         where: { roundId_playerId: { roundId: round.id, playerId } },
-        update: { content: { answers: dto.answers }, isBasta: esPrimero || undefined },
+        update: { content: { answers: mergedAnswers }, isBasta: esPrimero || undefined },
         create: {
           roundId: round.id,
           playerId,
-          content: { answers: dto.answers },
+          content: { answers: mergedAnswers },
           isBasta: esPrimero,
         },
       });
