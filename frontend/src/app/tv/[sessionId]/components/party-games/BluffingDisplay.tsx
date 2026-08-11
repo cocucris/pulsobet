@@ -17,16 +17,19 @@ export function BluffingDisplay({ round }: { round: BluffingRound }) {
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
-    if (round.phase !== 'INPUT') return;
+    if (!round || round.phase !== 'INPUT') return;
     const start = new Date(round.createdAt).getTime();
-    const end = start + round.timeLimit * 1000;
+    const end = start + (round.timeLimit ?? 60) * 1000;
     const update = () => setTimeLeft(Math.max(0, Math.ceil((end - Date.now()) / 1000)));
     update();
     const iv = setInterval(update, 500);
     return () => clearInterval(iv);
-  }, [round.createdAt, round.timeLimit, round.phase]);
+  }, [round?.createdAt, round?.timeLimit, round?.phase]);
 
-  const totalVotes = round.options.reduce((sum, o) => sum + (o.votes ?? 0), 0);
+  if (!round) return null;
+
+  const options = round.options ?? [];
+  const totalVotes = options.reduce((sum, o) => sum + (o.votes ?? 0), 0);
 
   return (
     <div className="flex flex-col items-center w-full h-full gap-8 px-8 py-6">
@@ -83,7 +86,7 @@ export function BluffingDisplay({ round }: { round: BluffingRound }) {
           <p className="text-center text-xl text-white/60 mb-2">
             🗳️ ¿Cuál es la respuesta <span className="text-amber-400 font-bold">REAL</span>?
           </p>
-          {round.options.map((opt, idx) => {
+          {options.map((opt, idx) => {
             const percentage = totalVotes > 0 ? Math.round(((opt.votes ?? 0) / totalVotes) * 100) : 0;
             return (
               <div key={opt.id} className="bg-white/10 rounded-2xl border border-white/20 p-4 flex items-center gap-4">
@@ -110,7 +113,7 @@ export function BluffingDisplay({ round }: { round: BluffingRound }) {
           <p className="text-center text-2xl font-black text-white mb-2 animate-pulse">
             🎉 ¡RESULTADOS!
           </p>
-          {round.options.map((opt, idx) => {
+          {options.map((opt, idx) => {
             const percentage = totalVotes > 0 ? Math.round(((opt.votes ?? 0) / totalVotes) * 100) : 0;
             return (
               <div

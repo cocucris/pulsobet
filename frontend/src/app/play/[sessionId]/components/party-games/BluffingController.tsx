@@ -21,6 +21,9 @@ interface Props {
 export function BluffingController({ round, mySubmission, myVote, socket }: Props) {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [localVote, setLocalVote] = useState<string | null>(null);
+
+  const activeVote = myVote || localVote;
 
   const handleSubmit = async () => {
     if (!inputText.trim() || sending) return;
@@ -33,7 +36,8 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
   };
 
   const handleVote = (targetId: string) => {
-    if (myVote) return;
+    if (activeVote) return;
+    setLocalVote(targetId);
     socket?.emit('PARTY_CAST_VOTE', { roundId: round.id, targetId });
   };
 
@@ -101,10 +105,11 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
           <p className="text-white/50 text-sm">Solo tenés un voto</p>
         </div>
 
-        {myVote ? (
-          <div className="bg-white/10 rounded-2xl border border-white/20 p-4 text-center">
-            <p className="text-2xl">✅</p>
-            <p className="text-white font-semibold mt-1">¡Voto registrado!</p>
+        {activeVote ? (
+          <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-2xl p-6 text-center animate-fade-in">
+            <p className="text-4xl mb-2">✅</p>
+            <p className="text-xl font-black text-white">¡Voto registrado!</p>
+            <p className="text-white/60 text-sm mt-1">Mirá los resultados en la pantalla principal</p>
           </div>
         ) : (
           <div className="flex flex-col gap-3">

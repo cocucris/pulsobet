@@ -145,7 +145,11 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
                 },
             });
         }
-        const roundPayload = this.serializeRound(round);
+        const fullRound = await this.prisma.partyGameRound.findUnique({
+            where: { id: round.id },
+            include: { submissions: { include: { player: true } } },
+        });
+        const roundPayload = this.serializeRound(fullRound || round);
         this.eventEmitter.emit('party.round.started', new party_games_events_1.PartyRoundStartedEvent(session.id, roundPayload, eventNumber));
         if (!isTutiFruti) {
             this.scheduler.scheduleAutoClose(`party-input-${round.id}`, round.timeLimit * 1000, async () => {

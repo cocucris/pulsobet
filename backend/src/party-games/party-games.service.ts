@@ -175,7 +175,12 @@ export class PartyGamesService {
       });
     }
 
-    const roundPayload = this.serializeRound(round);
+    const fullRound = await this.prisma.partyGameRound.findUnique({
+      where: { id: round.id },
+      include: { submissions: { include: { player: true } } },
+    });
+
+    const roundPayload = this.serializeRound(fullRound || round);
 
     this.eventEmitter.emit(
       'party.round.started',
