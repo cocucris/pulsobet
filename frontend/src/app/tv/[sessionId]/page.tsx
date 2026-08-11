@@ -194,8 +194,8 @@ export default function TvPage() {
                 <span className="text-sm font-black font-mono text-amber-300">+75 pts</span>
               </div>
               <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
-                <span className="text-[10px] text-purple-400 font-black">🤥 Engañar / Voto</span>
-                <span className="text-sm font-black font-mono text-amber-400">+100 / +250</span>
+                <span className="text-[10px] text-purple-400 font-black">🤥 Engañar / Acierto</span>
+                <span className="text-sm font-black font-mono text-amber-400">+100 / +200</span>
               </div>
             </div>
           ) : (
