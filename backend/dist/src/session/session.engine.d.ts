@@ -49,6 +49,17 @@ export declare class SessionEngine {
         newSessionId: string;
         archivedSessionId: string;
     }>;
+    resetAllPlayerPoints(sessionId: string): Promise<{
+        status: string;
+        message: string;
+        leaderboard: {
+            rank: number;
+            id: string;
+            nickname: string;
+            totalPoints: number;
+            streakCount: number;
+        }[];
+    }>;
     updateScore(matchId: string, scoreHome: number, scoreAway: number, homeTeam?: string, awayTeam?: string, currentMinute?: number, status?: 'SCHEDULED' | 'LIVE' | 'FINISHED'): Promise<{
         id: string;
         homeTeam: string;

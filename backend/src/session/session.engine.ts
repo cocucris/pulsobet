@@ -466,6 +466,41 @@ export class SessionEngine {
     return { status: 'success', newSessionId: oldId, archivedSessionId: archivedId };
   }
 
+  async resetAllPlayerPoints(sessionId: string) {
+    const session = await this.ensureSession(sessionId);
+
+    // 1. Poner a 0 totalPoints y streakCount de todos los jugadores de la sesión o del bar
+    await this.prisma.player.updateMany({
+      where: { OR: [{ sessionId: session.id }, { session: { barId: session.barId } }] },
+      data: { totalPoints: 0, streakCount: 0 },
+    });
+
+    // 2. Resetear puntos ganados en las partidas de Party Games
+    await this.prisma.partyGameSubmission.updateMany({
+      where: { round: { sessionId: session.id } },
+      data: { pointsEarned: 0, pointsSource: null },
+    });
+
+    // 3. Limpiar leaderboard en Redis
+    try {
+      await this.redisService.clearLeaderboard(session.id);
+    } catch (e) {
+      this.logger.warn(`Redis fallback on clearLeaderboard: ${e.message}`);
+    }
+
+    // 4. Notificar actualización de leaderboard en cero a través de WebSockets
+    const leaderboard = await this.getLeaderboard(session.id);
+    const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+
+    this.eventEmitter.emit(
+      'leaderboard.updated',
+      new LeaderboardUpdatedEvent(session.id, leaderboard, eventNumber),
+    );
+
+    this.logger.log(`Puntos reseteados a 0 para todos los jugadores en la sesión ${session.id}`);
+    return { status: 'success', message: 'Puntos reseteados a 0 para todos los jugadores', leaderboard };
+  }
+
   async updateScore(
     matchId: string,
     scoreHome: number,

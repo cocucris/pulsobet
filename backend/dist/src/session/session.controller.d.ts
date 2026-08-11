@@ -44,4 +44,17 @@ export declare class SessionController {
         newSessionId: string;
         archivedSessionId: string;
     }>;
+    resetPoints(body: {
+        sessionId: string;
+    }): Promise<{
+        status: string;
+        message: string;
+        leaderboard: {
+            rank: number;
+            id: string;
+            nickname: string;
+            totalPoints: number;
+            streakCount: number;
+        }[];
+    }>;
 }

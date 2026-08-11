@@ -374,6 +374,28 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
         this.logger.log(`Noche cerrada: sesión ${oldId} archivada como ${archivedId} y recreada en cero.`);
         return { status: 'success', newSessionId: oldId, archivedSessionId: archivedId };
     }
+    async resetAllPlayerPoints(sessionId) {
+        const session = await this.ensureSession(sessionId);
+        await this.prisma.player.updateMany({
+            where: { OR: [{ sessionId: session.id }, { session: { barId: session.barId } }] },
+            data: { totalPoints: 0, streakCount: 0 },
+        });
+        await this.prisma.partyGameSubmission.updateMany({
+            where: { round: { sessionId: session.id } },
+            data: { pointsEarned: 0, pointsSource: null },
+        });
+        try {
+            await this.redisService.clearLeaderboard(session.id);
+        }
+        catch (e) {
+            this.logger.warn(`Redis fallback on clearLeaderboard: ${e.message}`);
+        }
+        const leaderboard = await this.getLeaderboard(session.id);
+        const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
+        this.eventEmitter.emit('leaderboard.updated', new session_events_1.LeaderboardUpdatedEvent(session.id, leaderboard, eventNumber));
+        this.logger.log(`Puntos reseteados a 0 para todos los jugadores en la sesión ${session.id}`);
+        return { status: 'success', message: 'Puntos reseteados a 0 para todos los jugadores', leaderboard };
+    }
     async updateScore(matchId, scoreHome, scoreAway, homeTeam, awayTeam, currentMinute, status) {
         const dataToUpdate = { scoreHome, scoreAway };
         if (homeTeam)

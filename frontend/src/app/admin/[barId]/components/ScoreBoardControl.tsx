@@ -117,6 +117,37 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
     }
   };
 
+  const handleResetPoints = async () => {
+    const confirmed = window.confirm(
+      '¿Resetear a 0 los puntos de TODOS los jugadores (cocu, CARLOS, etc.)?\n\nLos jugadores mantendrán sus apodos y cuentas, pero sus marcadores y leaderboards volverán a 0.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsUpdatingScore(true);
+      const res = await fetch(`${API_URL}/session/reset-points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        alert(`Error al resetear los puntos: ${data?.message || `HTTP ${res.status}`}`);
+        return;
+      }
+
+      useSessionStore.getState().applyEvent('LEADERBOARD_UPDATED', data.leaderboard || []);
+      alert('¡Puntos reseteados a 0 para todos los jugadores!');
+    } catch (e) {
+      console.error('Error reseteando puntos:', e);
+      alert('Error de red al resetear puntos. Verificá la conexión con el servidor.');
+    } finally {
+      setIsUpdatingScore(false);
+    }
+  };
+
   const handleCloseNight = async () => {
     const confirmed = window.confirm(
       '¿Cerrar la noche y empezar de cero?\n\nSe archivan los puntos y canjes para reportes, y TODAS las pantallas (admin, TV y celulares) vuelven a cero. Los jugadores deberán registrarse de nuevo.'
@@ -257,6 +288,15 @@ export function ScoreBoardControl({ sessionId }: { sessionId: string }) {
             title="Borra el partido actual y resetea las pantallas a cero"
           >
             🧹 Limpiar Pantallas
+          </button>
+
+          <button
+            onClick={handleResetPoints}
+            disabled={isUpdatingScore}
+            className="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl uppercase tracking-wider transition-all shadow-md"
+            title="Pone a 0 los puntos acumulados de todos los jugadores (cocu, CARLOS, etc.) en todos los juegos"
+          >
+            🎯 Resetear Puntos (0)
           </button>
 
           <button

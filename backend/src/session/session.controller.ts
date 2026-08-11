@@ -48,4 +48,11 @@ export class SessionController {
   ) {
     return this.sessionEngine.closeAndResetSession(body.sessionId);
   }
+
+  @Post('reset-points')
+  async resetPoints(
+    @Body() body: { sessionId: string },
+  ) {
+    return this.sessionEngine.resetAllPlayerPoints(body.sessionId);
+  }
 }

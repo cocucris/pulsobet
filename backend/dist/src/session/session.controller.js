@@ -38,6 +38,9 @@ let SessionController = class SessionController {
     async closeSession(body) {
         return this.sessionEngine.closeAndResetSession(body.sessionId);
     }
+    async resetPoints(body) {
+        return this.sessionEngine.resetAllPlayerPoints(body.sessionId);
+    }
 };
 exports.SessionController = SessionController;
 __decorate([
@@ -84,6 +87,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], SessionController.prototype, "closeSession", null);
+__decorate([
+    (0, common_1.Post)('reset-points'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SessionController.prototype, "resetPoints", null);
 exports.SessionController = SessionController = __decorate([
     (0, common_1.Controller)('session'),
     __metadata("design:paramtypes", [session_engine_1.SessionEngine])
