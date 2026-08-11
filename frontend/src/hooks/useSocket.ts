@@ -136,6 +136,28 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       voteCallbacksRef.current.clear();
     });
 
+    // Confirmación de input de Party Games: actualizar mySubmission en el store inmediatamente
+    socket.on('PARTY_INPUT_ACCEPTED', (payload: { roundId: string }) => {
+      const store = useSessionStore.getState();
+      const snap = store.snapshot;
+      if (!snap) return;
+      const activeRound = snap.partyGame?.activeRound;
+      if (!activeRound || activeRound.id !== payload?.roundId) return;
+      // El contenido real llega vía snapshot; aquí solo marcamos que fue aceptado
+      // para que el componente cambie de vista sin esperar el polling REST
+      store.applyEvent('PARTY_MY_SUBMISSION_ACCEPTED', { roundId: payload.roundId });
+    });
+
+    // Confirmación de voto de Party Games: actualizar myVote en el store inmediatamente
+    socket.on('PARTY_VOTE_ACCEPTED', (payload: { roundId: string }) => {
+      const store = useSessionStore.getState();
+      const snap = store.snapshot;
+      if (!snap) return;
+      const activeRound = snap.partyGame?.activeRound;
+      if (!activeRound || activeRound.id !== payload?.roundId) return;
+      store.applyEvent('PARTY_MY_VOTE_ACCEPTED', { roundId: payload.roundId });
+    });
+
     // Escuchar eventos de dominio
     const domainEvents = [
       'MATCH_STARTED',

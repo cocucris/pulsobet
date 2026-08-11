@@ -386,7 +386,8 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         });
         const results = await this.calculateAndAwardPoints(round);
         const leaderboard = await this.getLeaderboard(sessionId);
-        const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+        const eventNumberResult = await this.sessionCache.incrementEventNumber(sessionId);
+        const eventNumberReveal = await this.sessionCache.incrementEventNumber(sessionId);
         const revealOptions = round.submissions.map((s) => {
             const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
             const votesCount = round.votes.filter((v) => v.targetId === s.id).length;
@@ -398,8 +399,8 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
                 votes: votesCount,
             };
         });
-        this.eventEmitter.emit('party.round.result', new party_games_events_1.PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumber));
-        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumber));
+        this.eventEmitter.emit('party.round.result', new party_games_events_1.PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumberResult));
+        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumberReveal));
         this.logger.log(`[PartyGames] Ronda ${roundId} → REVEAL`);
     }
     async finishRound(roundId, sessionId) {

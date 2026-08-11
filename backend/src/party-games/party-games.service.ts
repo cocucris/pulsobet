@@ -531,7 +531,10 @@ export class PartyGamesService {
     // Calcular y asignar puntos
     const results = await this.calculateAndAwardPoints(round);
     const leaderboard = await this.getLeaderboard(sessionId);
-    const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+    // CRÍTICO: usar eventNumbers separados para cada evento para que el store
+    // del frontend no descarte PARTY_PHASE_CHANGED (que lleva isReal) por deduplicación
+    const eventNumberResult = await this.sessionCache.incrementEventNumber(sessionId);
+    const eventNumberReveal = await this.sessionCache.incrementEventNumber(sessionId);
 
     const revealOptions = round.submissions.map((s: any) => {
       const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
@@ -547,12 +550,12 @@ export class PartyGamesService {
 
     this.eventEmitter.emit(
       'party.round.result',
-      new PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumber),
+      new PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumberResult),
     );
 
     this.eventEmitter.emit(
       'party.phase.changed',
-      new PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumber),
+      new PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumberReveal),
     );
 
     this.logger.log(`[PartyGames] Ronda ${roundId} → REVEAL`);

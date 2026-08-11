@@ -531,6 +531,41 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         });
         break;
 
+      // Feedback inmediato al jugador: el servidor confirmó su input (sin esperar polling REST)
+      case 'PARTY_MY_SUBMISSION_ACCEPTED': {
+        const round = snapshot.partyGame?.activeRound;
+        if (!round || round.id !== payload?.roundId) break;
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              // Marcar un mySubmission provisional para que el componente muestre "¡Respuesta enviada!"
+              mySubmission: snapshot.partyGame.mySubmission ?? { content: { text: '...' }, isBasta: false, _pending: true },
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
+      // Feedback inmediato al jugador: el servidor confirmó su voto
+      case 'PARTY_MY_VOTE_ACCEPTED': {
+        const round = snapshot.partyGame?.activeRound;
+        if (!round || round.id !== payload?.roundId) break;
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              myVote: snapshot.partyGame.myVote ?? '__voted__',
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
       case 'PARTY_GAME_OVER':
         set({
           snapshot: {
