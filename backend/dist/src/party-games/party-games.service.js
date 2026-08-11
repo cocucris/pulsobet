@@ -117,11 +117,13 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         }
         const eventNumber = await this.sessionCache.incrementEventNumber(session.id);
         const isTutiFruti = dto.gameType === 'TUTI_FRUTI';
+        const isSocial = dto.gameType === 'SOCIAL_JUDGMENT';
+        const initialPhase = isTutiFruti ? 'LOBBY' : (isSocial ? 'VOTING' : 'INPUT');
         const round = await this.prisma.partyGameRound.create({
             data: {
                 sessionId: session.id,
                 gameType: dto.gameType,
-                phase: isTutiFruti ? 'LOBBY' : 'INPUT',
+                phase: initialPhase,
                 prompt: dto.prompt,
                 categories: dto.categories ? dto.categories : undefined,
                 timeLimit: dto.timeLimit ?? 60,
@@ -145,13 +147,29 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
                 },
             });
         }
+        let socialOptions = [];
+        if (isSocial) {
+            const sessionPlayers = await this.prisma.player.findMany({
+                where: { sessionId: session.id, nickname: { not: '⭐ Respuesta Real' } },
+                select: { id: true, nickname: true },
+            });
+            socialOptions = sessionPlayers.map((p) => ({ id: p.id, nickname: p.nickname }));
+        }
         const fullRound = await this.prisma.partyGameRound.findUnique({
             where: { id: round.id },
             include: { submissions: { include: { player: true } } },
         });
-        const roundPayload = this.serializeRound(fullRound || round);
+        const roundPayload = {
+            ...this.serializeRound(fullRound || round),
+            options: isSocial ? socialOptions : [],
+        };
         this.eventEmitter.emit('party.round.started', new party_games_events_1.PartyRoundStartedEvent(session.id, roundPayload, eventNumber));
-        if (!isTutiFruti) {
+        if (isSocial) {
+            this.scheduler.scheduleAutoClose(`party-voting-${round.id}`, round.timeLimit * 1000, async () => {
+                await this.advanceToReveal(round.id, session.id);
+            });
+        }
+        else if (!isTutiFruti) {
             this.scheduler.scheduleAutoClose(`party-input-${round.id}`, round.timeLimit * 1000, async () => {
                 await this.advanceToVoting(round.id, session.id);
             });
@@ -365,7 +383,7 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             where: { id: roundId },
             data: { phase: 'VOTING' },
         });
-        const options = this.buildVotingOptions(round);
+        const options = await this.buildVotingOptions(round);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'VOTING', { options }, eventNumber));
         this.logger.log(`[PartyGames] Ronda ${roundId} → VOTING`);
@@ -388,17 +406,34 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         const leaderboard = await this.getLeaderboard(sessionId);
         const eventNumberResult = await this.sessionCache.incrementEventNumber(sessionId);
         const eventNumberReveal = await this.sessionCache.incrementEventNumber(sessionId);
-        const revealOptions = round.submissions.map((s) => {
-            const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
-            const votesCount = round.votes.filter((v) => v.targetId === s.id).length;
-            return {
-                id: s.id,
-                text: s.content?.text ?? '',
-                isReal,
-                submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
-                votes: votesCount,
-            };
-        });
+        let revealOptions = [];
+        if (round.gameType === 'SOCIAL_JUDGMENT') {
+            const sessionPlayers = await this.prisma.player.findMany({
+                where: { sessionId, nickname: { not: '⭐ Respuesta Real' } },
+                select: { id: true, nickname: true },
+            });
+            revealOptions = sessionPlayers.map((p) => {
+                const votesCount = round.votes.filter((v) => v.targetId === p.id).length;
+                return {
+                    id: p.id,
+                    nickname: p.nickname,
+                    votes: votesCount,
+                };
+            });
+        }
+        else {
+            revealOptions = round.submissions.map((s) => {
+                const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
+                const votesCount = round.votes.filter((v) => v.targetId === s.id).length;
+                return {
+                    id: s.id,
+                    text: s.content?.text ?? '',
+                    isReal,
+                    submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
+                    votes: votesCount,
+                };
+            });
+        }
         this.eventEmitter.emit('party.round.result', new party_games_events_1.PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumberResult));
         this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumberReveal));
         this.logger.log(`[PartyGames] Ronda ${roundId} → REVEAL`);
@@ -517,7 +552,7 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             map.set(playerId, []);
         map.get(playerId).push({ points, source });
     }
-    buildVotingOptions(round) {
+    async buildVotingOptions(round) {
         if (round.gameType === 'BLUFFING') {
             const shuffled = [...round.submissions].sort(() => Math.random() - 0.5);
             return shuffled.map((s) => ({
@@ -536,9 +571,13 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             }));
         }
         if (round.gameType === 'SOCIAL_JUDGMENT') {
-            return round.submissions.map((s) => ({
-                id: s.playerId,
-                nickname: s.player?.nickname,
+            const players = await this.prisma.player.findMany({
+                where: { sessionId: round.sessionId, nickname: { not: '⭐ Respuesta Real' } },
+                select: { id: true, nickname: true },
+            });
+            return players.map((p) => ({
+                id: p.id,
+                nickname: p.nickname,
             }));
         }
         return [];
@@ -584,12 +623,22 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             return null;
         const submittedCount = round.submissions.length;
         const totalPlayers = await this.prisma.player.count({ where: { sessionId } });
-        const myVotesByPlayer = await this.prisma.partyGameVote.findMany({ where: { roundId: round.id } });
+        let options = [];
+        if (round.phase === 'VOTING' || round.phase === 'REVEAL') {
+            options = await this.buildVotingOptions(round);
+            if (round.gameType === 'SOCIAL_JUDGMENT' && round.phase === 'REVEAL') {
+                const allVotes = await this.prisma.partyGameVote.findMany({ where: { roundId: round.id } });
+                options = options.map((opt) => ({
+                    ...opt,
+                    votes: allVotes.filter((v) => v.targetId === opt.id).length,
+                }));
+            }
+        }
         return {
             ...this.serializeRound(round),
             submittedCount,
             totalPlayers,
-            options: round.phase === 'VOTING' ? this.buildVotingOptions(round) : [],
+            options,
         };
     }
     async getLeaderboard(sessionId) {

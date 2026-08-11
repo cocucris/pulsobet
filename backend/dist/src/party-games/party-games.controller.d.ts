@@ -27,6 +27,7 @@ export declare class PartyGamesController {
         isDefault: boolean;
     }>;
     createRound(dto: CreatePartyRoundDto): Promise<{
+        options: any[];
         id: any;
         sessionId: any;
         gameType: any;
@@ -60,7 +61,7 @@ export declare class PartyGamesController {
     getActiveRound(sessionId: string): Promise<{
         submittedCount: number;
         totalPlayers: number;
-        options: any;
+        options: any[];
         id: any;
         sessionId: any;
         gameType: any;

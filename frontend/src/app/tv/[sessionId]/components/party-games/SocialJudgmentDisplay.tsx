@@ -27,19 +27,19 @@ export function SocialJudgmentDisplay({ round }: { round: SocialJudgmentRound })
         </p>
       </div>
 
-      {/* INPUT PHASE */}
-      {round.phase === 'INPUT' && (
-        <div className="flex flex-col items-center gap-4">
+      {/* VOTING PHASE (Secret Votations) */}
+      {(round.phase === 'INPUT' || round.phase === 'VOTING') && (
+        <div className="flex flex-col items-center gap-4 my-auto">
           <div className="text-6xl animate-bounce">🤫</div>
-          <p className="text-2xl text-white/60">Los votos son secretos. Seleccioná en tu celular.</p>
-          <p className="text-lg text-white/40">
-            Votaron: <span className="text-white font-bold">{totalVotes}</span> de {round.totalPlayers}
+          <p className="text-2xl text-white font-bold">Los votos son secretos. Seleccioná en tu celular.</p>
+          <p className="text-lg text-white/60">
+            Votaron: <span className="text-violet-400 font-black text-2xl">{totalVotes}</span> de {round.totalPlayers}
           </p>
         </div>
       )}
 
-      {/* VOTING / REVEAL PHASE */}
-      {(round.phase === 'VOTING' || round.phase === 'REVEAL') && (
+      {/* REVEAL PHASE (Results) */}
+      {round.phase === 'REVEAL' && (
         <div className="w-full max-w-3xl flex flex-col gap-4">
           {sorted.map((player, idx) => {
             const percentage = totalVotes > 0 ? Math.round(((player.votes ?? 0) / totalVotes) * 100) : 0;

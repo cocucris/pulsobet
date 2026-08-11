@@ -38,6 +38,7 @@ export declare class PartyGamesService {
     }>;
     private ensureDefaultCategories;
     createRound(dto: CreatePartyRoundDto): Promise<{
+        options: any[];
         id: any;
         sessionId: any;
         gameType: any;
@@ -89,7 +90,7 @@ export declare class PartyGamesService {
     getActiveRoundForSession(sessionId: string): Promise<{
         submittedCount: number;
         totalPlayers: number;
-        options: any;
+        options: any[];
         id: any;
         sessionId: any;
         gameType: any;

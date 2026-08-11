@@ -142,12 +142,14 @@ export class PartyGamesService {
     // Tuti Fruti nace en LOBBY (previa con categorías); el admin dispara el
     // countdown que lo lleva a INPUT. El resto de los juegos nace en INPUT.
     const isTutiFruti = dto.gameType === 'TUTI_FRUTI';
+    const isSocial = dto.gameType === 'SOCIAL_JUDGMENT';
+    const initialPhase = isTutiFruti ? 'LOBBY' : (isSocial ? 'VOTING' : 'INPUT');
 
     const round = await this.prisma.partyGameRound.create({
       data: {
         sessionId: session.id,
         gameType: dto.gameType,
-        phase: isTutiFruti ? 'LOBBY' : 'INPUT',
+        phase: initialPhase,
         prompt: dto.prompt,
         categories: dto.categories ? dto.categories : undefined,
         timeLimit: dto.timeLimit ?? 60,
@@ -175,20 +177,39 @@ export class PartyGamesService {
       });
     }
 
+    let socialOptions: any[] = [];
+    if (isSocial) {
+      const sessionPlayers = await this.prisma.player.findMany({
+        where: { sessionId: session.id, nickname: { not: '⭐ Respuesta Real' } },
+        select: { id: true, nickname: true },
+      });
+      socialOptions = sessionPlayers.map((p) => ({ id: p.id, nickname: p.nickname }));
+    }
+
     const fullRound = await this.prisma.partyGameRound.findUnique({
       where: { id: round.id },
       include: { submissions: { include: { player: true } } },
     });
 
-    const roundPayload = this.serializeRound(fullRound || round);
+    const roundPayload = {
+      ...this.serializeRound(fullRound || round),
+      options: isSocial ? socialOptions : [],
+    };
 
     this.eventEmitter.emit(
       'party.round.started',
       new PartyRoundStartedEvent(session.id, roundPayload, eventNumber),
     );
 
-    // El auto-cierre de INPUT solo se programa al entrar en INPUT (ver startInput).
-    if (!isTutiFruti) {
+    if (isSocial) {
+      this.scheduler.scheduleAutoClose(
+        `party-voting-${round.id}`,
+        round.timeLimit * 1000,
+        async () => {
+          await this.advanceToReveal(round.id, session.id);
+        },
+      );
+    } else if (!isTutiFruti) {
       this.scheduler.scheduleAutoClose(
         `party-input-${round.id}`,
         round.timeLimit * 1000,
@@ -502,7 +523,7 @@ export class PartyGamesService {
       data: { phase: 'VOTING' },
     });
 
-    const options = this.buildVotingOptions(round);
+    const options = await this.buildVotingOptions(round);
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
     this.eventEmitter.emit(
@@ -536,17 +557,33 @@ export class PartyGamesService {
     const eventNumberResult = await this.sessionCache.incrementEventNumber(sessionId);
     const eventNumberReveal = await this.sessionCache.incrementEventNumber(sessionId);
 
-    const revealOptions = round.submissions.map((s: any) => {
-      const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
-      const votesCount = round.votes.filter((v: any) => v.targetId === s.id).length;
-      return {
-        id: s.id,
-        text: s.content?.text ?? '',
-        isReal,
-        submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
-        votes: votesCount,
-      };
-    });
+    let revealOptions: any[] = [];
+    if (round.gameType === 'SOCIAL_JUDGMENT') {
+      const sessionPlayers = await this.prisma.player.findMany({
+        where: { sessionId, nickname: { not: '⭐ Respuesta Real' } },
+        select: { id: true, nickname: true },
+      });
+      revealOptions = sessionPlayers.map((p) => {
+        const votesCount = round.votes.filter((v: any) => v.targetId === p.id).length;
+        return {
+          id: p.id,
+          nickname: p.nickname,
+          votes: votesCount,
+        };
+      });
+    } else {
+      revealOptions = round.submissions.map((s: any) => {
+        const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
+        const votesCount = round.votes.filter((v: any) => v.targetId === s.id).length;
+        return {
+          id: s.id,
+          text: s.content?.text ?? '',
+          isReal,
+          submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
+          votes: votesCount,
+        };
+      });
+    }
 
     this.eventEmitter.emit(
       'party.round.result',
@@ -717,7 +754,7 @@ export class PartyGamesService {
 
   // ─── HELPERS ─────────────────────────────────────────────────────────────
 
-  private buildVotingOptions(round: any) {
+  private async buildVotingOptions(round: any) {
     if (round.gameType === 'BLUFFING') {
       // Mezclar submissions (respuestas de jugadores + real) aleatoriamente
       const shuffled = [...round.submissions].sort(() => Math.random() - 0.5);
@@ -742,10 +779,14 @@ export class PartyGamesService {
     }
 
     if (round.gameType === 'SOCIAL_JUDGMENT') {
-      // Para Juicio Social: lista de jugadores de la sesión para votar
-      return round.submissions.map((s: any) => ({
-        id: s.playerId,
-        nickname: s.player?.nickname,
+      // Para Juicio Social: lista de jugadores de la sesión para votar (excluyendo bot de respuesta real)
+      const players = await this.prisma.player.findMany({
+        where: { sessionId: round.sessionId, nickname: { not: '⭐ Respuesta Real' } },
+        select: { id: true, nickname: true },
+      });
+      return players.map((p) => ({
+        id: p.id,
+        nickname: p.nickname,
       }));
     }
 
@@ -797,13 +838,24 @@ export class PartyGamesService {
 
     const submittedCount = round.submissions.length;
     const totalPlayers = await this.prisma.player.count({ where: { sessionId } });
-    const myVotesByPlayer = await this.prisma.partyGameVote.findMany({ where: { roundId: round.id } });
+
+    let options: any[] = [];
+    if (round.phase === 'VOTING' || round.phase === 'REVEAL') {
+      options = await this.buildVotingOptions(round);
+      if (round.gameType === 'SOCIAL_JUDGMENT' && round.phase === 'REVEAL') {
+        const allVotes = await this.prisma.partyGameVote.findMany({ where: { roundId: round.id } });
+        options = options.map((opt: any) => ({
+          ...opt,
+          votes: allVotes.filter((v: any) => v.targetId === opt.id).length,
+        }));
+      }
+    }
 
     return {
       ...this.serializeRound(round),
       submittedCount,
       totalPlayers,
-      options: round.phase === 'VOTING' ? this.buildVotingOptions(round) : [],
+      options,
     };
   }
 

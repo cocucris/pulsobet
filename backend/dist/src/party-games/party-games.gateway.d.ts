@@ -43,6 +43,7 @@ export declare class PartyGamesGateway {
     handleAdminStartRound(client: Socket, data: CreatePartyRoundDto): Promise<{
         status: string;
         round: {
+            options: any[];
             id: any;
             sessionId: any;
             gameType: any;

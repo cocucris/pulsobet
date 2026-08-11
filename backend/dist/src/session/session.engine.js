@@ -263,7 +263,19 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                         options = basta ? [{ id: basta.id, answers: basta.content?.answers, nickname: basta.player?.nickname }] : [];
                     }
                     else if (activePartyRound.gameType === 'SOCIAL_JUDGMENT') {
-                        options = activePartyRound.submissions.map((s) => ({ id: s.playerId, nickname: s.player?.nickname }));
+                        const sessionPlayers = await this.prisma.player.findMany({
+                            where: { sessionId: actualSessionId, nickname: { not: '⭐ Respuesta Real' } },
+                            select: { id: true, nickname: true },
+                        });
+                        const isReveal = activePartyRound.phase === 'REVEAL';
+                        options = sessionPlayers.map((p) => {
+                            const votesCount = allVotes.filter((v) => v.targetId === p.id).length;
+                            return {
+                                id: p.id,
+                                nickname: p.nickname,
+                                ...(isReveal ? { votes: votesCount } : {}),
+                            };
+                        });
                     }
                 }
                 partyGame.activeRound = {

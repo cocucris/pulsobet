@@ -314,7 +314,19 @@ export class SessionEngine {
             const basta = activePartyRound.submissions.find((s: any) => s.isBasta);
             options = basta ? [{ id: basta.id, answers: (basta.content as any)?.answers, nickname: basta.player?.nickname }] : [];
           } else if (activePartyRound.gameType === 'SOCIAL_JUDGMENT') {
-            options = activePartyRound.submissions.map((s: any) => ({ id: s.playerId, nickname: s.player?.nickname }));
+            const sessionPlayers = await this.prisma.player.findMany({
+              where: { sessionId: actualSessionId, nickname: { not: '⭐ Respuesta Real' } },
+              select: { id: true, nickname: true },
+            });
+            const isReveal = activePartyRound.phase === 'REVEAL';
+            options = sessionPlayers.map((p) => {
+              const votesCount = allVotes.filter((v: any) => v.targetId === p.id).length;
+              return {
+                id: p.id,
+                nickname: p.nickname,
+                ...(isReveal ? { votes: votesCount } : {}),
+              };
+            });
           }
         }
 
