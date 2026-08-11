@@ -287,10 +287,29 @@ export class SessionEngine {
         // Construir opciones de votación si ya estamos en VOTING o REVEAL
         let options: any[] = [];
         if (activePartyRound.phase === 'VOTING' || activePartyRound.phase === 'REVEAL') {
+          const allVotes = await this.prisma.partyGameVote.findMany({ where: { roundId: activePartyRound.id } });
+
           if (activePartyRound.gameType === 'BLUFFING') {
-            options = [...activePartyRound.submissions]
-              .sort(() => Math.random() - 0.5)
-              .map((s: any) => ({ id: s.id, text: s.content?.text ?? '' }));
+            const isReveal = activePartyRound.phase === 'REVEAL';
+            options = [...activePartyRound.submissions].map((s: any) => {
+              const isReal = (s.content as any)?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
+              const votesCount = allVotes.filter((v: any) => v.targetId === s.id).length;
+              return {
+                id: s.id,
+                text: (s.content as any)?.text ?? '',
+                ...(isReveal
+                  ? {
+                      isReal,
+                      submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
+                      votes: votesCount,
+                    }
+                  : { votes: votesCount }),
+              };
+            });
+
+            if (!isReveal) {
+              options.sort(() => Math.random() - 0.5);
+            }
           } else if (activePartyRound.gameType === 'TUTI_FRUTI') {
             const basta = activePartyRound.submissions.find((s: any) => s.isBasta);
             options = basta ? [{ id: basta.id, answers: (basta.content as any)?.answers, nickname: basta.player?.nickname }] : [];

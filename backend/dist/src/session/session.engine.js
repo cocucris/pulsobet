@@ -236,10 +236,27 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
                 const totalPlayers = await this.prisma.player.count({ where: { sessionId: actualSessionId } });
                 let options = [];
                 if (activePartyRound.phase === 'VOTING' || activePartyRound.phase === 'REVEAL') {
+                    const allVotes = await this.prisma.partyGameVote.findMany({ where: { roundId: activePartyRound.id } });
                     if (activePartyRound.gameType === 'BLUFFING') {
-                        options = [...activePartyRound.submissions]
-                            .sort(() => Math.random() - 0.5)
-                            .map((s) => ({ id: s.id, text: s.content?.text ?? '' }));
+                        const isReveal = activePartyRound.phase === 'REVEAL';
+                        options = [...activePartyRound.submissions].map((s) => {
+                            const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
+                            const votesCount = allVotes.filter((v) => v.targetId === s.id).length;
+                            return {
+                                id: s.id,
+                                text: s.content?.text ?? '',
+                                ...(isReveal
+                                    ? {
+                                        isReal,
+                                        submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
+                                        votes: votesCount,
+                                    }
+                                    : { votes: votesCount }),
+                            };
+                        });
+                        if (!isReveal) {
+                            options.sort(() => Math.random() - 0.5);
+                        }
                     }
                     else if (activePartyRound.gameType === 'TUTI_FRUTI') {
                         const basta = activePartyRound.submissions.find((s) => s.isBasta);
