@@ -529,13 +529,13 @@ export class PartyGamesService {
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
     const revealOptions = round.submissions.map((s: any) => {
-      const isReal = s.content?.isReal === true;
+      const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
       const votesCount = round.votes.filter((v: any) => v.targetId === s.id).length;
       return {
         id: s.id,
         text: s.content?.text ?? '',
         isReal,
-        submittedBy: isReal ? 'Respuesta Real / Oficial' : (s.player?.nickname ?? 'Jugador'),
+        submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
         votes: votesCount,
       };
     });
@@ -587,8 +587,9 @@ export class PartyGamesService {
 
     if (gameType === 'BLUFFING') {
       // Encontrar la submission real (la creada por el admin como "respuesta verdadera")
-      // Convención: la primera submission con content.isReal = true, o la que tenga playerId = '__real__'
-      const realSubmission = submissions.find((s: any) => s.content?.isReal === true);
+      const realSubmission = submissions.find(
+        (s: any) => s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real',
+      );
 
       if (realSubmission) {
         // Puntos por adivinar la respuesta real

@@ -384,13 +384,13 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         const leaderboard = await this.getLeaderboard(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         const revealOptions = round.submissions.map((s) => {
-            const isReal = s.content?.isReal === true;
+            const isReal = s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real';
             const votesCount = round.votes.filter((v) => v.targetId === s.id).length;
             return {
                 id: s.id,
                 text: s.content?.text ?? '',
                 isReal,
-                submittedBy: isReal ? 'Respuesta Real / Oficial' : (s.player?.nickname ?? 'Jugador'),
+                submittedBy: isReal ? 'Respuesta Real / Oficial (Admin)' : (s.player?.nickname ?? 'Jugador'),
                 votes: votesCount,
             };
         });
@@ -416,7 +416,7 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         const { submissions, votes, gameType } = round;
         const pointsMap = new Map();
         if (gameType === 'BLUFFING') {
-            const realSubmission = submissions.find((s) => s.content?.isReal === true);
+            const realSubmission = submissions.find((s) => s.content?.isReal === true || s.player?.nickname === '⭐ Respuesta Real');
             if (realSubmission) {
                 const correctVoters = votes.filter((v) => v.targetId === realSubmission.id);
                 for (const vote of correctVoters) {
