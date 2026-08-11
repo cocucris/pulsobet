@@ -142,13 +142,26 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         if (round.phase !== 'INPUT') {
             throw new common_1.BadRequestException('La fase de Input ya terminó.');
         }
+        let contentToSave = dto.content;
+        if (round.gameType === 'TUTI_FRUTI' && dto.content?.answers) {
+            const previa = await this.prisma.partyGameSubmission.findUnique({
+                where: { roundId_playerId: { roundId: round.id, playerId } },
+            });
+            const prevAnswers = previa?.content?.answers ?? {};
+            const mergedAnswers = { ...prevAnswers };
+            for (const [cat, val] of Object.entries(dto.content?.answers ?? {})) {
+                if (String(val).trim() !== '')
+                    mergedAnswers[cat] = String(val);
+            }
+            contentToSave = { answers: mergedAnswers };
+        }
         await this.prisma.partyGameSubmission.upsert({
             where: { roundId_playerId: { roundId: round.id, playerId } },
-            update: { content: dto.content },
+            update: { content: contentToSave },
             create: {
                 roundId: round.id,
                 playerId,
-                content: dto.content,
+                content: contentToSave,
             },
         });
         const submittedCount = await this.prisma.partyGameSubmission.count({
@@ -212,7 +225,9 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
             });
             const eventNumber = await this.sessionCache.incrementEventNumber(round.sessionId);
             this.eventEmitter.emit('party.basta.called', new party_games_events_1.PartyBastaCalledEvent(round.sessionId, round.id, playerId, player?.nickname ?? 'Jugador', eventNumber));
-            await this.advanceToVoting(round.id, round.sessionId);
+            this.scheduler.scheduleAutoClose(`party-basta-grace-${round.id}`, 2000, async () => {
+                await this.advanceToVoting(round.id, round.sessionId);
+            });
         }
         return { accepted: true, isBasta };
     }
@@ -362,6 +377,7 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         this.scheduler.cancelTimer(`party-input-${roundId}`);
         this.scheduler.cancelTimer(`party-voting-${roundId}`);
         this.scheduler.cancelTimer(`party-countdown-${roundId}`);
+        this.scheduler.cancelTimer(`party-basta-grace-${roundId}`);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
         this.eventEmitter.emit('party.round.finished', new party_games_events_1.PartyRoundFinishedEvent(sessionId, roundId, eventNumber));
         this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'FINISHED', {}, eventNumber));

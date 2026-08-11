@@ -183,14 +183,27 @@ export class PartyGamesService {
       throw new BadRequestException('La fase de Input ya terminó.');
     }
 
-    // Upsert: si ya envió, actualizar
+    // Upsert: si ya envió, actualizar (mergeando respuestas no vacías en TUTI_FRUTI para no pisar avance previo)
+    let contentToSave = dto.content;
+    if (round.gameType === 'TUTI_FRUTI' && (dto.content as any)?.answers) {
+      const previa = await this.prisma.partyGameSubmission.findUnique({
+        where: { roundId_playerId: { roundId: round.id, playerId } },
+      });
+      const prevAnswers = (previa?.content as any)?.answers ?? {};
+      const mergedAnswers: Record<string, string> = { ...prevAnswers };
+      for (const [cat, val] of Object.entries((dto.content as any)?.answers ?? {})) {
+        if (String(val).trim() !== '') mergedAnswers[cat] = String(val);
+      }
+      contentToSave = { answers: mergedAnswers };
+    }
+
     await this.prisma.partyGameSubmission.upsert({
       where: { roundId_playerId: { roundId: round.id, playerId } },
-      update: { content: dto.content },
+      update: { content: contentToSave },
       create: {
         roundId: round.id,
         playerId,
-        content: dto.content,
+        content: contentToSave,
       },
     });
 
@@ -243,8 +256,6 @@ export class PartyGamesService {
       const esPrimero = !existingBasta;
 
       // No pisar respuestas buenas con vacías: mergear con el autosave previo.
-      // Si el BASTA llega con una categoría vacía pero el autosave ya la tenía,
-      // se conserva la del autosave.
       const previa = await tx.partyGameSubmission.findUnique({
         where: { roundId_playerId: { roundId: round.id, playerId } },
       });
@@ -283,7 +294,14 @@ export class PartyGamesService {
         new PartyBastaCalledEvent(round.sessionId, round.id, playerId, player?.nickname ?? 'Jugador', eventNumber),
       );
 
-      await this.advanceToVoting(round.id, round.sessionId);
+      // Dar 2 segundos de gracia para que los celulares de todos los jugadores envíen sus respuestas en pantalla antes de cambiar a VOTING
+      this.scheduler.scheduleAutoClose(
+        `party-basta-grace-${round.id}`,
+        2000,
+        async () => {
+          await this.advanceToVoting(round.id, round.sessionId);
+        },
+      );
     }
 
     return { accepted: true, isBasta };
@@ -511,6 +529,7 @@ export class PartyGamesService {
     this.scheduler.cancelTimer(`party-input-${roundId}`);
     this.scheduler.cancelTimer(`party-voting-${roundId}`);
     this.scheduler.cancelTimer(`party-countdown-${roundId}`);
+    this.scheduler.cancelTimer(`party-basta-grace-${roundId}`);
 
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 

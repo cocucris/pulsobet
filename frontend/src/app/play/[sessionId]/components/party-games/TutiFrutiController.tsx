@@ -62,6 +62,9 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
     return () => clearInterval(iv);
   }, [round.countdownEndsAt, round.phase]);
 
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+
   // Autosave: enviar respuestas parciales mientras se escribe (debounce 800ms).
   // Así, si OTRO jugador grita BASTA, el servidor ya tiene lo tuyo.
   useEffect(() => {
@@ -79,6 +82,15 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answers, round.phase, round.id, mySubmission]);
+
+  // Flush inmediato de respuestas al momento que ALGUIEN grita BASTA o cambia la fase
+  useEffect(() => {
+    if (!round.bastaBy || mySubmission) return;
+    const hasContent = Object.values(answersRef.current).some((a) => a.trim() !== '');
+    if (hasContent) {
+      socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers: answersRef.current } });
+    }
+  }, [round.bastaBy, round.id, socket, mySubmission]);
 
   const handleBasta = () => {
     if (sending || !inputsEnabled) return;
