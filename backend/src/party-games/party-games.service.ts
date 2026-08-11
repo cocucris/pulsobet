@@ -156,10 +156,20 @@ export class PartyGamesService {
 
     // Si es Mentiroso (BLUFFING) y el admin proporcionó la respuesta verdadera
     if (dto.gameType === 'BLUFFING' && dto.realAnswer) {
+      const systemPlayer = await this.prisma.player.upsert({
+        where: { sessionId_nickname: { sessionId: session.id, nickname: '⭐ Respuesta Real' } },
+        update: {},
+        create: {
+          sessionId: session.id,
+          nickname: '⭐ Respuesta Real',
+          totalPoints: 0,
+        },
+      });
+
       await this.prisma.partyGameSubmission.create({
         data: {
           roundId: round.id,
-          playerId: '__real__',
+          playerId: systemPlayer.id,
           content: { text: dto.realAnswer, isReal: true },
         },
       });
@@ -519,7 +529,7 @@ export class PartyGamesService {
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
     const revealOptions = round.submissions.map((s: any) => {
-      const isReal = s.content?.isReal === true || s.playerId === '__real__';
+      const isReal = s.content?.isReal === true;
       const votesCount = round.votes.filter((v: any) => v.targetId === s.id).length;
       return {
         id: s.id,
