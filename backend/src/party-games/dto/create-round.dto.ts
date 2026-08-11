@@ -19,6 +19,10 @@ export class CreatePartyRoundDto {
   @IsOptional()
   categories?: string[]; // Solo para TUTI_FRUTI, máx 4
 
+  @IsString()
+  @IsOptional()
+  realAnswer?: string; // Para BLUFFING: la respuesta correcta / verdadera
+
   @IsNumber()
   @Min(15, { message: 'El tiempo límite mínimo es 15 segundos.' })
   @Max(300, { message: 'El tiempo límite máximo es 300 segundos.' })

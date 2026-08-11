@@ -16,6 +16,7 @@ class CreatePartyRoundDto {
     gameType;
     prompt;
     categories;
+    realAnswer;
     timeLimit;
 }
 exports.CreatePartyRoundDto = CreatePartyRoundDto;
@@ -41,6 +42,11 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Array)
 ], CreatePartyRoundDto.prototype, "categories", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreatePartyRoundDto.prototype, "realAnswer", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
     (0, class_validator_1.Min)(15, { message: 'El tiempo límite mínimo es 15 segundos.' }),

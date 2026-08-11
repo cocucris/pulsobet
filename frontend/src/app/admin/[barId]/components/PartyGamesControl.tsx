@@ -30,6 +30,7 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
 
   const [selectedGame, setSelectedGame] = useState<GameType>('BLUFFING');
   const [prompt, setPrompt] = useState('');
+  const [realAnswer, setRealAnswer] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [timeLimit, setTimeLimit] = useState(60);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -86,6 +87,7 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
       sessionId,
       gameType: selectedGame,
       prompt: prompt.trim(),
+      ...(selectedGame === 'BLUFFING' && realAnswer.trim() ? { realAnswer: realAnswer.trim() } : {}),
       ...(selectedGame === 'TUTI_FRUTI' ? { categories: selectedCategories } : {}),
       timeLimit,
     };
@@ -106,6 +108,7 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
         return;
       }
       setPrompt('');
+      setRealAnswer('');
     } catch {
       setError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
     } finally {
@@ -234,18 +237,36 @@ export function PartyGamesControl({ barId, sessionId, socket }: Props) {
 
           {/* Configuración de Mentiroso */}
           {selectedGame === 'BLUFFING' && (
-            <div className="mb-5">
-              <label className="text-white/50 text-xs uppercase tracking-wider block mb-2">
-                Premisa / Dato curioso incompleto
-              </label>
-              <textarea
-                id="party-bluffing-prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder='Ej: "El récord mundial de... fue logrado por..."'
-                rows={3}
-                className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white placeholder:text-white/20 resize-none focus:outline-none focus:border-amber-400 transition-colors"
-              />
+            <div className="mb-5 flex flex-col gap-3">
+              <div>
+                <label className="text-amber-400 font-bold text-xs uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                  <span>❓</span>
+                  <span>Premisa / Dato curioso incompleto</span>
+                </label>
+                <textarea
+                  id="party-bluffing-prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder='Ej: "El récord mundial de tiro libre más lejano fue logrado por..."'
+                  rows={2}
+                  className="w-full bg-white/10 border border-white/20 rounded-xl p-3 text-white placeholder:text-white/20 resize-none focus:outline-none focus:border-amber-400 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-emerald-400 font-bold text-xs uppercase tracking-wider block mb-1.5 flex items-center gap-1">
+                  <span>✅</span>
+                  <span>Respuesta Correcta / Verdadera</span>
+                </label>
+                <input
+                  id="party-bluffing-real-answer"
+                  type="text"
+                  value={realAnswer}
+                  onChange={(e) => setRealAnswer(e.target.value)}
+                  placeholder='Ej: "Un jugador de tercera división en 1985"'
+                  className="w-full bg-slate-950 border border-emerald-500/50 rounded-xl p-3 text-emerald-300 font-bold placeholder:text-white/20 focus:outline-none focus:border-emerald-400 transition-colors"
+                />
+              </div>
             </div>
           )}
 

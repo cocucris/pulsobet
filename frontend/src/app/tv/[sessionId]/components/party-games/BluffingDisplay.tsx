@@ -125,10 +125,10 @@ export function BluffingDisplay({ round }: { round: BluffingRound }) {
                   {opt.isReal ? '✅' : '🤥'}
                 </span>
                 <div className="flex-1">
-                  <p className="text-xl text-white font-semibold">{opt.text}</p>
-                  {opt.submittedBy && (
-                    <p className="text-sm text-white/50">— {opt.submittedBy}</p>
-                  )}
+                  <p className="text-xl text-white font-black tracking-wide">{opt.text}</p>
+                  <p className={`text-xs font-bold mt-1 uppercase tracking-wider ${opt.isReal ? 'text-emerald-400 font-black' : 'text-slate-400'}`}>
+                    {opt.isReal ? '⭐ RESPUESTA REAL / OFICIAL' : `🤥 Creada por: ${opt.submittedBy || 'Jugador'}`}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 min-w-[120px]">
                   <div className="flex-1 h-3 bg-white/10 rounded-full overflow-hidden">

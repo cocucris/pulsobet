@@ -127,6 +127,15 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
                 timeLimit: dto.timeLimit ?? 60,
             },
         });
+        if (dto.gameType === 'BLUFFING' && dto.realAnswer) {
+            await this.prisma.partyGameSubmission.create({
+                data: {
+                    roundId: round.id,
+                    playerId: '__real__',
+                    content: { text: dto.realAnswer, isReal: true },
+                },
+            });
+        }
         const roundPayload = this.serializeRound(round);
         this.eventEmitter.emit('party.round.started', new party_games_events_1.PartyRoundStartedEvent(session.id, roundPayload, eventNumber));
         if (!isTutiFruti) {
@@ -365,8 +374,19 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         const results = await this.calculateAndAwardPoints(round);
         const leaderboard = await this.getLeaderboard(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
+        const revealOptions = round.submissions.map((s) => {
+            const isReal = s.content?.isReal === true || s.playerId === '__real__';
+            const votesCount = round.votes.filter((v) => v.targetId === s.id).length;
+            return {
+                id: s.id,
+                text: s.content?.text ?? '',
+                isReal,
+                submittedBy: isReal ? 'Respuesta Real / Oficial' : (s.player?.nickname ?? 'Jugador'),
+                votes: votesCount,
+            };
+        });
         this.eventEmitter.emit('party.round.result', new party_games_events_1.PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumber));
-        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard }, eventNumber));
+        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumber));
         this.logger.log(`[PartyGames] Ronda ${roundId} → REVEAL`);
     }
     async finishRound(roundId, sessionId) {

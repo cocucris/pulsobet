@@ -154,6 +154,17 @@ export class PartyGamesService {
       },
     });
 
+    // Si es Mentiroso (BLUFFING) y el admin proporcionó la respuesta verdadera
+    if (dto.gameType === 'BLUFFING' && dto.realAnswer) {
+      await this.prisma.partyGameSubmission.create({
+        data: {
+          roundId: round.id,
+          playerId: '__real__',
+          content: { text: dto.realAnswer, isReal: true },
+        },
+      });
+    }
+
     const roundPayload = this.serializeRound(round);
 
     this.eventEmitter.emit(
@@ -507,6 +518,18 @@ export class PartyGamesService {
     const leaderboard = await this.getLeaderboard(sessionId);
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
+    const revealOptions = round.submissions.map((s: any) => {
+      const isReal = s.content?.isReal === true || s.playerId === '__real__';
+      const votesCount = round.votes.filter((v: any) => v.targetId === s.id).length;
+      return {
+        id: s.id,
+        text: s.content?.text ?? '',
+        isReal,
+        submittedBy: isReal ? 'Respuesta Real / Oficial' : (s.player?.nickname ?? 'Jugador'),
+        votes: votesCount,
+      };
+    });
+
     this.eventEmitter.emit(
       'party.round.result',
       new PartyRoundResultEvent(sessionId, roundId, results, leaderboard, eventNumber),
@@ -514,7 +537,7 @@ export class PartyGamesService {
 
     this.eventEmitter.emit(
       'party.phase.changed',
-      new PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard }, eventNumber),
+      new PartyPhaseChangedEvent(sessionId, roundId, 'REVEAL', { results, leaderboard, options: revealOptions }, eventNumber),
     );
 
     this.logger.log(`[PartyGames] Ronda ${roundId} → REVEAL`);
