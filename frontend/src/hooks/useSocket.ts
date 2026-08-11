@@ -87,7 +87,15 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     const restFallbackInterval = setInterval(() => {
       const isConnected = useSessionStore.getState().isConnected;
       if (!isConnected && sessionId) {
-        fetch(`${API_URL}/session/snapshot/${sessionId}`)
+        let pId: string | null = null;
+        if (typeof window !== 'undefined') {
+          pId = localStorage.getItem(`pulsobet_player_id:${sessionId}`);
+        }
+        const url = pId
+          ? `${API_URL}/session/snapshot/${sessionId}?playerId=${encodeURIComponent(pId)}`
+          : `${API_URL}/session/snapshot/${sessionId}`;
+
+        fetch(url)
           .then((r) => (r.ok ? r.json() : null))
           .then((snapshot) => {
             if (snapshot) {

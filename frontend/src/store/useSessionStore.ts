@@ -58,6 +58,8 @@ export interface SessionSnapshot {
     votedTriviaIds: string[];
   } | null;
 
+  sessionReset?: boolean;
+
   connectedPlayersCount: number;
 
   rewards: {
@@ -180,10 +182,16 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
 
   setConnected: (isConnected) => set({ isConnected }),
 
-  applySnapshot: (snapshot) => {
+  applySnapshot: (newSnapshot) => {
+    const currentSnapshot = get().snapshot;
+    // Preservar myPlayer existente si el nuevo snapshot viene sin perfil del jugador (ej. snapshot público o REST genérico)
+    const mergedSnapshot = {
+      ...newSnapshot,
+      myPlayer: newSnapshot?.myPlayer ?? currentSnapshot?.myPlayer ?? null,
+    };
     set({
-      snapshot,
-      lastEventNumber: snapshot.eventNumber || 0,
+      snapshot: mergedSnapshot,
+      lastEventNumber: newSnapshot.eventNumber || 0,
       isConnected: true,
     });
   },
@@ -417,6 +425,7 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
                 votingClosed: false,
                 votingResults: null,
                 partyGame: { activeRound: null, mySubmission: null, myVote: null },
+                sessionReset: true,
               }
             : snapshot,
           lastEventNumber: nextEventNumber,
