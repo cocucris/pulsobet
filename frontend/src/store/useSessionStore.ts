@@ -609,9 +609,10 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       case 'PARTY_VOTE_UPDATED': {
         const round = snapshot.partyGame?.activeRound;
         if (!round || round.id !== payload?.roundId) break;
-        // Actualizar conteos de votos en las opciones actuales
+        // Actualizar conteos de votos preservando isReal y submittedBy
         const updatedOptions = (round.options || []).map((opt: any) => {
           const voteEntry = (payload.votes || []).find((v: any) => v.targetId === opt.id);
+          // CRÍTICO: preservar isReal y submittedBy al actualizar votos
           return voteEntry ? { ...opt, votes: voteEntry.count } : opt;
         });
         set({
@@ -627,21 +628,25 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         break;
       }
 
-      case 'PARTY_ROUND_RESULT':
+      case 'PARTY_ROUND_RESULT': {
+        // CRÍTICO: las options con isReal vienen en PARTY_PHASE_CHANGED (REVEAL),
+        // que siempre se emite justo DESPUÉS de PARTY_ROUND_RESULT. NO sobreescribir options aquí.
+        const existingRound = snapshot.partyGame?.activeRound;
         set({
           snapshot: {
             ...snapshot,
             leaderboardTop10: payload.leaderboard || snapshot.leaderboardTop10,
             partyGame: {
               ...snapshot.partyGame,
-              activeRound: snapshot.partyGame?.activeRound
-                ? { ...snapshot.partyGame.activeRound, phase: 'REVEAL', results: payload.results }
+              activeRound: existingRound
+                ? { ...existingRound, phase: 'REVEAL', results: payload.results }
                 : null,
             },
           },
           lastEventNumber: nextEventNumber,
         });
         break;
+      }
 
       case 'PARTY_ROUND_FINISHED':
         set({
