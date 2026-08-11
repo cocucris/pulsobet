@@ -167,6 +167,54 @@ export default function TvPage() {
           <p className="text-slate-950 font-black text-base mt-2 tracking-wider font-mono uppercase">pulso.bet/play</p>
         </div>
 
+        {/* Tarjeta de Reglas & Puntajes por Item (debajo del QR) */}
+        <div className="bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-amber-500/30 rounded-2xl p-3.5 flex flex-col gap-2 shadow-lg backdrop-blur-md">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <span className="text-[11px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>Reglas de Puntuación</span>
+            </span>
+            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {snapshot?.mode === 'PARTY_GAMES' ? 'PARTY GAMES' : 'TRIVIAS'}
+            </span>
+          </div>
+
+          {snapshot?.mode === 'PARTY_GAMES' ? (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
+                <span className="text-[10px] text-emerald-400 font-black">🛑 ¡BASTA! Primero</span>
+                <span className="text-sm font-black font-mono text-amber-400">+300 pts</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
+                <span className="text-[10px] text-emerald-400 font-black">🔤 Resp. Única</span>
+                <span className="text-sm font-black font-mono text-amber-400">+150 pts</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
+                <span className="text-[10px] text-slate-300 font-bold">🤝 Compartida</span>
+                <span className="text-sm font-black font-mono text-amber-300">+75 pts</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
+                <span className="text-[10px] text-purple-400 font-black">🤥 Engañar / Voto</span>
+                <span className="text-sm font-black font-mono text-amber-400">+100 / +250</span>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
+                <span className="text-[10px] text-amber-400 font-black">⚽ Acierto Trivia</span>
+                <span className="text-sm font-black font-mono text-amber-400">+150 pts</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
+                <span className="text-[10px] text-emerald-400 font-black">⚡ Trivia Flash</span>
+                <span className="text-sm font-black font-mono text-amber-400">+300 pts</span>
+              </div>
+              <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col col-span-2">
+                <span className="text-[10px] text-slate-300 font-bold">🍻 Acumulá puntos y canjeá premios del bar</span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Stats compactos + Online badge */}
         <div className="flex flex-col gap-2 mt-auto">
           <div className="grid grid-cols-2 gap-2">
