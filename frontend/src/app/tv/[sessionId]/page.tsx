@@ -182,7 +182,7 @@ export default function TvPage() {
           {snapshot?.mode === 'PARTY_GAMES' ? (
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">
-                <span className="text-[10px] text-emerald-400 font-black">🛑 ¡BASTA! Primero</span>
+                <span className="text-[10px] text-emerald-400 font-black">🍓 ¡TUTIFRUTI! Primero</span>
                 <span className="text-sm font-black font-mono text-amber-400">+300 pts</span>
               </div>
               <div className="bg-slate-950/60 p-2 rounded-xl border border-slate-800 flex flex-col">

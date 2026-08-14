@@ -148,6 +148,16 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       store.applyEvent('PARTY_MY_SUBMISSION_ACCEPTED', { roundId: payload.roundId });
     });
 
+    // Confirmación de TUTIFRUTI / BASTA de Party Games: actualizar mySubmission en el store
+    socket.on('PARTY_BASTA_ACCEPTED', (payload: { roundId: string; isBasta?: boolean; answers?: any }) => {
+      const store = useSessionStore.getState();
+      const snap = store.snapshot;
+      if (!snap) return;
+      const activeRound = snap.partyGame?.activeRound;
+      if (!activeRound || activeRound.id !== payload?.roundId) return;
+      store.applyEvent('PARTY_MY_BASTA_ACCEPTED', payload);
+    });
+
     // Confirmación de voto de Party Games: actualizar myVote en el store inmediatamente
     socket.on('PARTY_VOTE_ACCEPTED', (payload: { roundId: string }) => {
       const store = useSessionStore.getState();

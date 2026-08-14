@@ -311,8 +311,14 @@ export class SessionEngine {
               options.sort(() => Math.random() - 0.5);
             }
           } else if (activePartyRound.gameType === 'TUTI_FRUTI') {
-            const basta = activePartyRound.submissions.find((s: any) => s.isBasta);
-            options = basta ? [{ id: basta.id, answers: (basta.content as any)?.answers, nickname: basta.player?.nickname }] : [];
+            options = [...activePartyRound.submissions]
+              .sort((a: any, b: any) => Number(b.isBasta) - Number(a.isBasta))
+              .map((s: any) => ({
+                id: s.id,
+                answers: (s.content as any)?.answers ?? {},
+                nickname: s.player?.nickname,
+                isBasta: s.isBasta,
+              }));
           } else if (activePartyRound.gameType === 'SOCIAL_JUDGMENT') {
             const sessionPlayers = await this.prisma.player.findMany({
               where: { sessionId: actualSessionId, nickname: { not: '⭐ Respuesta Real' } },
@@ -330,6 +336,10 @@ export class SessionEngine {
           }
         }
 
+        const bastaSubmission = activePartyRound.gameType === 'TUTI_FRUTI'
+          ? activePartyRound.submissions.find((s: any) => s.isBasta)
+          : null;
+
         partyGame.activeRound = {
           id: activePartyRound.id,
           gameType: activePartyRound.gameType,
@@ -341,12 +351,19 @@ export class SessionEngine {
           submittedCount,
           totalPlayers,
           options,
+          ...(bastaSubmission ? { bastaBy: bastaSubmission.player?.nickname } : {}),
         };
 
         // Submission y voto propios del jugador (si está identificado)
         if (playerId) {
           const mySubmission = activePartyRound.submissions.find((s: any) => s.playerId === playerId);
-          partyGame.mySubmission = mySubmission ? { content: mySubmission.content, isBasta: mySubmission.isBasta } : null;
+          const shouldIncludeMySubmission = activePartyRound.gameType !== 'TUTI_FRUTI'
+            || activePartyRound.phase !== 'INPUT'
+            || Boolean(mySubmission?.isBasta);
+
+          partyGame.mySubmission = (mySubmission && shouldIncludeMySubmission)
+            ? { content: mySubmission.content, isBasta: mySubmission.isBasta }
+            : null;
 
           const myVote = await this.prisma.partyGameVote.findUnique({
             where: { roundId_voterId: { roundId: activePartyRound.id, voterId: playerId } },

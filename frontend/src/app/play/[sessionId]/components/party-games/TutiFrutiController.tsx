@@ -34,20 +34,23 @@ interface Props {
 export function TutiFrutiController({ round, mySubmission, socket }: Props) {
   const categories = round.categories ?? [];
   const myPlayerId = useSessionStore((s) => s.snapshot?.myPlayer?.id);
+  const myNickname = useSessionStore((s) => s.snapshot?.myPlayer?.nickname);
   const myRank = useSessionStore((s) => s.snapshot?.myPlayer?.rank);
   const [answers, setAnswers] = useState<Record<string, string>>(
     Object.fromEntries(categories.map((c) => [c, ''])),
   );
   const [sending, setSending] = useState(false);
+  const [iCalledBasta, setICalledBasta] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mis puntos en esta ronda (fase REVEAL)
   const myResult = round.results?.submissions.find((s) => s.playerId === myPlayerId);
 
-  // ¿Alguien (otro) gritó BASTA? → congelar inputs
-  const frozenByOther = Boolean(round.bastaBy) && !mySubmission?.isBasta;
-  const inputsEnabled = round.phase === 'INPUT' && !frozenByOther && !mySubmission;
+  // ¿Quién cantó TUTIFRUTI?
+  const isMeWhoCalled = iCalledBasta || mySubmission?.isBasta || (Boolean(round.bastaBy) && Boolean(myNickname) && round.bastaBy?.toLowerCase() === myNickname?.toLowerCase());
+  const frozenByOther = Boolean(round.bastaBy) && !isMeWhoCalled;
+  const inputsEnabled = round.phase === 'INPUT' && !frozenByOther && !isMeWhoCalled;
 
   // Cuenta regresiva sincronizada con el servidor
   useEffect(() => {
@@ -65,10 +68,10 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
   const answersRef = useRef(answers);
   answersRef.current = answers;
 
-  // Autosave: enviar respuestas parciales mientras se escribe (debounce 800ms).
-  // Así, si OTRO jugador grita BASTA, el servidor ya tiene lo tuyo.
+  // Autosave: enviar respuestas parciales mientras se escribe (debounce 800ms) en segundo plano.
+  // Así, si OTRO jugador grita TUTIFRUTI, el servidor ya tiene lo tuyo guardado.
   useEffect(() => {
-    if (round.phase !== 'INPUT' || mySubmission) return;
+    if (round.phase !== 'INPUT' || isMeWhoCalled) return;
     const hasContent = Object.values(answers).some((a) => a.trim() !== '');
     if (!hasContent) return;
 
@@ -81,37 +84,58 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers, round.phase, round.id, mySubmission]);
+  }, [answers, round.phase, round.id, isMeWhoCalled]);
 
-  // Flush inmediato de respuestas al momento que ALGUIEN grita BASTA o cambia la fase
+  // Flush inmediato de respuestas al momento que ALGUIEN grita TUTIFRUTI o cambia la fase
   useEffect(() => {
-    if (!round.bastaBy || mySubmission) return;
+    if (!round.bastaBy || isMeWhoCalled) return;
     const hasContent = Object.values(answersRef.current).some((a) => a.trim() !== '');
     if (hasContent) {
       socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers: answersRef.current } });
     }
-  }, [round.bastaBy, round.id, socket, mySubmission]);
+  }, [round.bastaBy, round.id, socket, isMeWhoCalled]);
 
   const handleBasta = () => {
     if (sending || !inputsEnabled) return;
-    // No permitir BASTA sin al menos una respuesta
+    // No permitir TUTIFRUTI sin al menos una respuesta
     const hasContent = Object.values(answers).some((a) => a.trim() !== '');
     if (!hasContent) return;
     setSending(true);
+    setICalledBasta(true);
     socket?.emit('PARTY_BASTA', { roundId: round.id, answers });
     setTimeout(() => setSending(false), 1500);
   };
 
   const hasAnyAnswer = Object.values(answers).some((a) => a.trim() !== '');
 
-  // Pantalla de éxito tras enviar (propia submission confirmada)
-  if (mySubmission) {
+  // Pantalla de éxito tras cantar TUTIFRUTI en fase INPUT
+  if (isMeWhoCalled && round.phase === 'INPUT') {
+    const displayAnswers = mySubmission?.content?.answers || answers;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
+        <div className="text-7xl animate-bounce">🏆</div>
+        <h3 className="text-3xl font-black text-emerald-400">¡TUTIFRUTI!</h3>
+        <p className="text-white font-medium">¡Fuiste el primero en responder y cantar TUTIFRUTI!</p>
+        <div className="bg-white/10 rounded-2xl border border-white/20 p-4 w-full max-w-sm text-left">
+          {categories.map((cat) => (
+            <div key={cat} className="py-2 border-b border-white/10 last:border-0">
+              <p className="text-white/40 text-xs uppercase tracking-wider">{cat}</p>
+              <p className="text-white font-semibold">{displayAnswers[cat] || '—'}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Pantalla de confirmación si ya no estamos en INPUT pero no es REVEAL todavía
+  if (mySubmission && !mySubmission._pending && round.phase !== 'INPUT' && round.phase !== 'REVEAL' && round.phase !== 'LOBBY' && round.phase !== 'COUNTDOWN') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
         {mySubmission.isBasta ? (
           <>
             <div className="text-7xl">🏆</div>
-            <h3 className="text-3xl font-black text-emerald-400">¡BASTA!</h3>
+            <h3 className="text-3xl font-black text-emerald-400">¡TUTIFRUTI!</h3>
             <p className="text-white">¡Fuiste el primero en responder todas las categorías!</p>
           </>
         ) : (
@@ -124,7 +148,7 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
           {categories.map((cat) => (
             <div key={cat} className="py-2 border-b border-white/10 last:border-0">
               <p className="text-white/40 text-xs uppercase tracking-wider">{cat}</p>
-              <p className="text-white font-semibold">{mySubmission.content?.answers?.[cat] || '—'}</p>
+              <p className="text-white font-semibold">{mySubmission.content?.answers?.[cat] || answers[cat] || '—'}</p>
             </div>
           ))}
         </div>
@@ -168,18 +192,18 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
     );
   }
 
-  // INPUT — formulario activo (o congelado si otro gritó BASTA)
+  // INPUT — formulario activo (o congelado si otro gritó TUTIFRUTI)
   if (round.phase === 'INPUT') {
     return (
       <div className="flex flex-col gap-5 p-4">
         <div className="text-center">
           <div className="text-7xl font-black text-emerald-400 leading-none">{round.prompt}</div>
-          <p className="text-white/50 text-sm mt-2">Completá todas las categorías y presioná BASTA</p>
+          <p className="text-white/50 text-sm mt-2">Completá las categorías y presioná TUTIFRUTI</p>
         </div>
 
         {frozenByOther && (
           <div className="bg-red-500/20 border border-red-400/40 text-red-300 text-center font-bold rounded-xl px-4 py-3">
-            🛑 ¡{round.bastaBy} gritó BASTA! Tus respuestas ya fueron enviadas.
+            🛑 ¡{round.bastaBy} cantó TUTIFRUTI! Tus respuestas ya fueron enviadas.
           </div>
         )}
 
@@ -206,9 +230,9 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
           id="tuti-basta-btn"
           onClick={handleBasta}
           disabled={sending || !inputsEnabled || !hasAnyAnswer}
-          className="w-full py-5 bg-emerald-400 text-black font-black text-2xl rounded-2xl active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-emerald-400/30 mt-2"
+          className="w-full py-5 bg-emerald-400 hover:bg-emerald-300 text-black font-black text-2xl rounded-2xl active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-emerald-400/30 mt-2 cursor-pointer"
         >
-          {sending ? 'Enviando...' : '🛑 ¡BASTA!'}
+          {sending ? 'Enviando...' : '🍓 ¡TUTIFRUTI!'}
         </button>
       </div>
     );

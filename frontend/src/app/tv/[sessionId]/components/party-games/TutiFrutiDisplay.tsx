@@ -148,7 +148,7 @@ export function TutiFrutiDisplay({ round }: { round: TutiFrutiRound }) {
       {(round.phase === 'VOTING' || round.phase === 'REVEAL') && (
         <div className="w-full max-w-4xl flex flex-col gap-6">
           <div className="text-center text-3xl font-black text-emerald-400 animate-bounce">
-            {round.bastaBy ? `¡¡BASTA!! — ${round.bastaBy}` : '¡Tiempo!'}
+            {round.bastaBy ? `¡¡TUTIFRUTI!! — ${round.bastaBy}` : '¡Tiempo!'}
           </div>
 
           {/* En REVEAL: ranking por puntos de la ronda */}
@@ -173,7 +173,7 @@ export function TutiFrutiDisplay({ round }: { round: TutiFrutiRound }) {
                         <span className="text-xl font-black text-white">{sub.nickname}</span>
                         {sub.isBasta && (
                           <span className="text-xs font-bold bg-emerald-400 text-black px-2 py-0.5 rounded-full">
-                            🛑 BASTA
+                            🍓 TUTIFRUTI
                           </span>
                         )}
                       </div>
@@ -209,7 +209,7 @@ export function TutiFrutiDisplay({ round }: { round: TutiFrutiRound }) {
                     <span className="text-xl font-black text-white">{opt.nickname}</span>
                     {opt.isBasta && (
                       <span className="text-xs font-bold bg-emerald-400 text-black px-2 py-0.5 rounded-full">
-                        🛑 BASTA
+                        🍓 TUTIFRUTI
                       </span>
                     )}
                   </div>

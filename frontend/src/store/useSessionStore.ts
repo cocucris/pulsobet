@@ -535,6 +535,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       case 'PARTY_MY_SUBMISSION_ACCEPTED': {
         const round = snapshot.partyGame?.activeRound;
         if (!round || round.id !== payload?.roundId) break;
+        // En TUTI_FRUTI el input es continuo (autosave), no pisamos el estado con pending
+        if (round.gameType === 'TUTI_FRUTI') break;
         set({
           snapshot: {
             ...snapshot,
@@ -542,6 +544,26 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
               ...snapshot.partyGame,
               // Marcar un mySubmission provisional para que el componente muestre "¡Respuesta enviada!"
               mySubmission: snapshot.partyGame.mySubmission ?? { content: { text: '...' }, isBasta: false, _pending: true },
+            },
+          },
+          lastEventNumber: nextEventNumber,
+        });
+        break;
+      }
+
+      // Feedback inmediato al jugador que cantó TUTIFRUTI / BASTA
+      case 'PARTY_MY_BASTA_ACCEPTED': {
+        const round = snapshot.partyGame?.activeRound;
+        if (!round || round.id !== payload?.roundId) break;
+        set({
+          snapshot: {
+            ...snapshot,
+            partyGame: {
+              ...snapshot.partyGame,
+              mySubmission: {
+                content: { answers: payload.answers || (snapshot.partyGame.mySubmission as any)?.content?.answers || {} },
+                isBasta: payload.isBasta ?? true,
+              },
             },
           },
           lastEventNumber: nextEventNumber,
@@ -608,12 +630,21 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       case 'PARTY_BASTA_CALLED': {
         const round = snapshot.partyGame?.activeRound;
         if (!round || round.id !== payload?.roundId) break;
+        const isMe = payload.playerId && snapshot.myPlayer?.id && payload.playerId === snapshot.myPlayer.id;
         set({
           snapshot: {
             ...snapshot,
             partyGame: {
               ...snapshot.partyGame,
               activeRound: { ...round, bastaBy: payload.nickname },
+              ...(isMe
+                ? {
+                    mySubmission: {
+                      content: { answers: (snapshot.partyGame.mySubmission as any)?.content?.answers || {} },
+                      isBasta: true,
+                    },
+                  }
+                : {}),
             },
           },
           lastEventNumber: nextEventNumber,
