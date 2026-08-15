@@ -30,13 +30,21 @@ let PartyGamesGateway = PartyGamesGateway_1 = class PartyGamesGateway {
         this.partyGamesService = partyGamesService;
     }
     async handleSubmitInput(client, data) {
-        const user = client.user;
-        if (!user?.sub || !user?.sessionId) {
-            client.emit('PARTY_INPUT_REJECTED', { reason: 'Token inválido o expirado.' });
+        let user = client.user;
+        if (!user?.sub && data.playerId) {
+            user = { sub: data.playerId };
+        }
+        if (!user?.sub) {
+            client.emit('PARTY_INPUT_REJECTED', { reason: 'Token o jugador no identificado.' });
             return { status: 'rejected' };
         }
         try {
-            const result = await this.partyGamesService.submitInput(user.sub, user.sessionId, data);
+            let sessionId = user.sessionId;
+            if (!sessionId) {
+                const round = await this.partyGamesService.getActiveRound(data.roundId);
+                sessionId = round.sessionId;
+            }
+            const result = await this.partyGamesService.submitInput(user.sub, sessionId, data);
             client.emit('PARTY_INPUT_ACCEPTED', { roundId: data.roundId });
             return { status: 'accepted', ...result };
         }
@@ -47,14 +55,22 @@ let PartyGamesGateway = PartyGamesGateway_1 = class PartyGamesGateway {
         }
     }
     async handleBasta(client, data) {
-        const user = client.user;
-        if (!user?.sub || !user?.sessionId) {
-            client.emit('PARTY_BASTA_REJECTED', { reason: 'Token inválido o expirado.' });
+        let user = client.user;
+        if (!user?.sub && data.playerId) {
+            user = { sub: data.playerId };
+        }
+        if (!user?.sub) {
+            client.emit('PARTY_BASTA_REJECTED', { reason: 'Token o jugador no identificado.' });
             return { status: 'rejected' };
         }
         try {
-            const result = await this.partyGamesService.submitBasta(user.sub, user.sessionId, data);
-            client.emit('PARTY_BASTA_ACCEPTED', { roundId: data.roundId, isBasta: result.isBasta });
+            let sessionId = user.sessionId;
+            if (!sessionId) {
+                const round = await this.partyGamesService.getActiveRound(data.roundId);
+                sessionId = round.sessionId;
+            }
+            const result = await this.partyGamesService.submitBasta(user.sub, sessionId, data);
+            client.emit('PARTY_BASTA_ACCEPTED', { roundId: data.roundId, isBasta: result.isBasta, answers: data.answers });
             return { status: 'accepted', ...result };
         }
         catch (err) {
@@ -64,9 +80,12 @@ let PartyGamesGateway = PartyGamesGateway_1 = class PartyGamesGateway {
         }
     }
     async handleCastVote(client, data) {
-        const user = client.user;
+        let user = client.user;
+        if (!user?.sub && data?.playerId) {
+            user = { sub: data.playerId };
+        }
         if (!user?.sub) {
-            client.emit('PARTY_VOTE_REJECTED', { reason: 'Token inválido o expirado.' });
+            client.emit('PARTY_VOTE_REJECTED', { reason: 'Token o jugador no identificado.' });
             return { status: 'rejected' };
         }
         try {

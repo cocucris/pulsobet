@@ -85,7 +85,17 @@ export declare class PartyGamesService {
     private addPoints;
     private buildVotingOptions;
     private buildVotesSummary;
-    private getActiveRound;
+    getActiveRound(roundId: string): Promise<{
+        id: string;
+        createdAt: Date;
+        sessionId: string;
+        gameType: string;
+        phase: string;
+        prompt: string;
+        categories: import("@prisma/client/runtime/library").JsonValue | null;
+        timeLimit: number;
+        finishedAt: Date | null;
+    }>;
     private serializeRound;
     getActiveRoundForSession(sessionId: string): Promise<{
         submittedCount: number;

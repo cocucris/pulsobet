@@ -14,6 +14,8 @@ const class_validator_1 = require("class-validator");
 class BastaDto {
     roundId;
     answers;
+    playerId;
+    token;
 }
 exports.BastaDto = BastaDto;
 __decorate([
@@ -25,4 +27,14 @@ __decorate([
     (0, class_validator_1.IsObject)({ message: 'Las respuestas deben ser un objeto con categoría: texto.' }),
     __metadata("design:type", Object)
 ], BastaDto.prototype, "answers", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], BastaDto.prototype, "playerId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], BastaDto.prototype, "token", void 0);
 //# sourceMappingURL=basta.dto.js.map

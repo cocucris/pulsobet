@@ -802,7 +802,7 @@ export class PartyGamesService {
     return Array.from(counts.entries()).map(([targetId, count]) => ({ targetId, count }));
   }
 
-  private async getActiveRound(roundId: string) {
+  async getActiveRound(roundId: string) {
     const round = await this.prisma.partyGameRound.findUnique({
       where: { id: roundId },
     });

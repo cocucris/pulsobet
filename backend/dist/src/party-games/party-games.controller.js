@@ -51,6 +51,26 @@ let PartyGamesController = PartyGamesController_1 = class PartyGamesController {
     async endGame(sessionId) {
         return this.partyGamesService.endGame(sessionId);
     }
+    async submitBasta(roundId, body) {
+        const round = await this.partyGamesService.getActiveRound(roundId);
+        return this.partyGamesService.submitBasta(body.playerId, round.sessionId, {
+            roundId,
+            answers: body.answers,
+        });
+    }
+    async submitInput(roundId, body) {
+        const round = await this.partyGamesService.getActiveRound(roundId);
+        return this.partyGamesService.submitInput(body.playerId, round.sessionId, {
+            roundId,
+            content: body.content,
+        });
+    }
+    async castVote(roundId, body) {
+        return this.partyGamesService.castVote(body.playerId, {
+            roundId,
+            targetId: body.targetId,
+        });
+    }
     async getActiveRound(sessionId) {
         return this.partyGamesService.getActiveRoundForSession(sessionId);
     }
@@ -114,6 +134,30 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], PartyGamesController.prototype, "endGame", null);
+__decorate([
+    (0, common_1.Post)('rounds/:roundId/basta'),
+    __param(0, (0, common_1.Param)('roundId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PartyGamesController.prototype, "submitBasta", null);
+__decorate([
+    (0, common_1.Post)('rounds/:roundId/input'),
+    __param(0, (0, common_1.Param)('roundId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PartyGamesController.prototype, "submitInput", null);
+__decorate([
+    (0, common_1.Post)('rounds/:roundId/vote'),
+    __param(0, (0, common_1.Param)('roundId')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PartyGamesController.prototype, "castVote", null);
 __decorate([
     (0, common_1.Get)('rounds/active/:sessionId'),
     __param(0, (0, common_1.Param)('sessionId')),

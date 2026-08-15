@@ -58,6 +58,27 @@ export declare class PartyGamesController {
             streakCount: number;
         }[];
     }>;
+    submitBasta(roundId: string, body: {
+        playerId: string;
+        answers: Record<string, string>;
+    }): Promise<{
+        accepted: boolean;
+        isBasta: boolean;
+    }>;
+    submitInput(roundId: string, body: {
+        playerId: string;
+        content: Record<string, any>;
+    }): Promise<{
+        accepted: boolean;
+        submittedCount: number;
+        totalPlayers: number;
+    }>;
+    castVote(roundId: string, body: {
+        playerId: string;
+        targetId: string;
+    }): Promise<{
+        accepted: boolean;
+    }>;
     getActiveRound(sessionId: string): Promise<{
         submittedCount: number;
         totalPlayers: number;

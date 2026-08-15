@@ -14,6 +14,8 @@ const class_validator_1 = require("class-validator");
 class SubmitPartyInputDto {
     roundId;
     content;
+    playerId;
+    token;
 }
 exports.SubmitPartyInputDto = SubmitPartyInputDto;
 __decorate([
@@ -25,4 +27,14 @@ __decorate([
     (0, class_validator_1.IsObject)({ message: 'El contenido debe ser un objeto.' }),
     __metadata("design:type", Object)
 ], SubmitPartyInputDto.prototype, "content", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SubmitPartyInputDto.prototype, "playerId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SubmitPartyInputDto.prototype, "token", void 0);
 //# sourceMappingURL=submit-input.dto.js.map

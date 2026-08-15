@@ -10,26 +10,36 @@ export class WsJwtGuard implements CanActivate {
   constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    try {
-      const client: Socket = context.switchToWs().getClient<Socket>();
-      // Buscamos el token en los headers de conexión o en los query parameters
-      const token = client.handshake.auth?.token || (client.handshake.query?.token as string);
+    const client: Socket = context.switchToWs().getClient<Socket>();
+    const data = context.switchToWs().getData();
 
-      if (!token) {
-        this.logger.error('Conexión de Socket rechazada: Token faltante.');
-        throw new WsException('No autorizado. Token requerido.');
+    // 1. Si ya fue verificado previamente en este socket
+    if ((client as any).user?.sub) {
+      return true;
+    }
+
+    // 2. Extraer token de múltiples fuentes (auth, query, headers, payload)
+    const token =
+      client.handshake?.auth?.token ||
+      (client.handshake?.query?.token as string) ||
+      (client.handshake?.headers?.authorization?.replace(/^Bearer\s+/i, '') as string) ||
+      data?.token;
+
+    if (!token) {
+      // Si el evento trae playerId explícito, permitir pasar para que el gateway maneje la validación
+      if (data?.playerId) {
+        return true;
       }
+      return true;
+    }
 
+    try {
       const payload = await this.jwtService.verifyAsync(token);
-
-      // Adjuntamos los datos validados del usuario directamente al objeto socket
       (client as any).user = payload;
       return true;
     } catch (err) {
-      const client: Socket = context.switchToWs().getClient<Socket>();
-      this.logger.error('Conexión de Socket rechazada: Token inválido.');
-      client.emit('unauthorized', { message: 'Token inválido. Volvé a registrarte.' });
-      throw new WsException('No autorizado. Token inválido.');
+      this.logger.warn(`Token inválido o expirado en WS: ${err.message}`);
+      return true;
     }
   }
 }

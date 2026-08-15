@@ -60,6 +60,43 @@ export class PartyGamesController {
     return this.partyGamesService.endGame(sessionId);
   }
 
+  // ─── ACCIONES DE JUGADOR (CON RESPALDO REST) ─────────────────────────────
+
+  @Post('rounds/:roundId/basta')
+  async submitBasta(
+    @Param('roundId') roundId: string,
+    @Body() body: { playerId: string; answers: Record<string, string> },
+  ) {
+    const round = await this.partyGamesService.getActiveRound(roundId);
+    return this.partyGamesService.submitBasta(body.playerId, round.sessionId, {
+      roundId,
+      answers: body.answers,
+    });
+  }
+
+  @Post('rounds/:roundId/input')
+  async submitInput(
+    @Param('roundId') roundId: string,
+    @Body() body: { playerId: string; content: Record<string, any> },
+  ) {
+    const round = await this.partyGamesService.getActiveRound(roundId);
+    return this.partyGamesService.submitInput(body.playerId, round.sessionId, {
+      roundId,
+      content: body.content,
+    });
+  }
+
+  @Post('rounds/:roundId/vote')
+  async castVote(
+    @Param('roundId') roundId: string,
+    @Body() body: { playerId: string; targetId: string },
+  ) {
+    return this.partyGamesService.castVote(body.playerId, {
+      roundId,
+      targetId: body.targetId,
+    });
+  }
+
   // ─── CONSULTA DE ESTADO (para reconexión / polling fallback) ─────────────
 
   @Get('rounds/active/:sessionId')

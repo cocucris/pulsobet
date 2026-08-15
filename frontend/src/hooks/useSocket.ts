@@ -42,6 +42,10 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       auth: {
         token: token,
       },
+      query: {
+        token: token || '',
+        sessionId,
+      },
     });
 
     socketRef.current = socket;

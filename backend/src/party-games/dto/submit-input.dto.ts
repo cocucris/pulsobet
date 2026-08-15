@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsObject } from 'class-validator';
+import { IsString, IsNotEmpty, IsObject, IsOptional } from 'class-validator';
 
 export class SubmitPartyInputDto {
   @IsString()
@@ -7,4 +7,12 @@ export class SubmitPartyInputDto {
 
   @IsObject({ message: 'El contenido debe ser un objeto.' })
   content: Record<string, any>; // { text: string } para BLUFFING | { answers: Record<string,string> } para TUTI_FRUTI
+
+  @IsOptional()
+  @IsString()
+  playerId?: string;
+
+  @IsOptional()
+  @IsString()
+  token?: string;
 }

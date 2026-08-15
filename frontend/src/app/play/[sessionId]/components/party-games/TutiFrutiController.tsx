@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSessionStore } from '@/store/useSessionStore';
+import { API_URL } from '@/config/api';
 
 interface TutiFrutiRound {
   id: string;
@@ -77,32 +78,59 @@ export function TutiFrutiController({ round, mySubmission, socket }: Props) {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers } });
+      socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers }, playerId: myPlayerId });
     }, 800);
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers, round.phase, round.id, isMeWhoCalled]);
+  }, [answers, round.phase, round.id, isMeWhoCalled, myPlayerId]);
 
   // Flush inmediato de respuestas al momento que ALGUIEN grita TUTIFRUTI o cambia la fase
   useEffect(() => {
     if (!round.bastaBy || isMeWhoCalled) return;
     const hasContent = Object.values(answersRef.current).some((a) => a.trim() !== '');
     if (hasContent) {
-      socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers: answersRef.current } });
+      // 1. WebSocket
+      socket?.emit('PARTY_SUBMIT_INPUT', { roundId: round.id, content: { answers: answersRef.current }, playerId: myPlayerId });
+      // 2. Respaldo REST inmediato
+      if (myPlayerId) {
+        fetch(`${API_URL}/party-games/rounds/${round.id}/input`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId: myPlayerId, content: { answers: answersRef.current } }),
+        }).catch(() => {});
+      }
     }
-  }, [round.bastaBy, round.id, socket, isMeWhoCalled]);
+  }, [round.bastaBy, round.id, socket, isMeWhoCalled, myPlayerId]);
 
-  const handleBasta = () => {
+  const handleBasta = async () => {
     if (sending || !inputsEnabled) return;
     // No permitir TUTIFRUTI sin al menos una respuesta
     const hasContent = Object.values(answers).some((a) => a.trim() !== '');
     if (!hasContent) return;
     setSending(true);
     setICalledBasta(true);
-    socket?.emit('PARTY_BASTA', { roundId: round.id, answers });
+
+    const payload = { roundId: round.id, answers, playerId: myPlayerId };
+
+    // 1. Emisión en tiempo real vía WebSocket
+    socket?.emit('PARTY_BASTA', payload);
+
+    // 2. Respaldo HTTP REST garantizado: si el WebSocket sufre un microcorte, la petición REST asegura la llamada
+    if (myPlayerId) {
+      try {
+        await fetch(`${API_URL}/party-games/rounds/${round.id}/basta`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId: myPlayerId, answers }),
+        });
+      } catch (err) {
+        console.warn('Fallback REST basta:', err);
+      }
+    }
+
     setTimeout(() => setSending(false), 1500);
   };
 

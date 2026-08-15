@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsObject } from 'class-validator';
+import { IsString, IsNotEmpty, IsObject, IsOptional } from 'class-validator';
 
 export class BastaDto {
   @IsString()
@@ -7,4 +7,12 @@ export class BastaDto {
 
   @IsObject({ message: 'Las respuestas deben ser un objeto con categoría: texto.' })
   answers: Record<string, string>; // { "País": "Paraguay", "Animal": "Pato" }
+
+  @IsOptional()
+  @IsString()
+  playerId?: string;
+
+  @IsOptional()
+  @IsString()
+  token?: string;
 }
