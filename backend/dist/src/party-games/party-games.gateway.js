@@ -45,7 +45,7 @@ let PartyGamesGateway = PartyGamesGateway_1 = class PartyGamesGateway {
                 sessionId = round.sessionId;
             }
             const result = await this.partyGamesService.submitInput(user.sub, sessionId, data);
-            client.emit('PARTY_INPUT_ACCEPTED', { roundId: data.roundId });
+            client.emit('PARTY_INPUT_ACCEPTED', { roundId: data.roundId, content: data.content });
             return { status: 'accepted', ...result };
         }
         catch (err) {

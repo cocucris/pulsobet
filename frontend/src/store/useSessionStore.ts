@@ -542,8 +542,12 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
             ...snapshot,
             partyGame: {
               ...snapshot.partyGame,
-              // Marcar un mySubmission provisional para que el componente muestre "¡Respuesta enviada!"
-              mySubmission: snapshot.partyGame.mySubmission ?? { content: { text: '...' }, isBasta: false, _pending: true },
+              // Marcar un mySubmission con el contenido real del jugador
+              mySubmission: {
+                content: payload.content || snapshot.partyGame.mySubmission?.content || { text: '...' },
+                isBasta: false,
+                _pending: true,
+              },
             },
           },
           lastEventNumber: nextEventNumber,

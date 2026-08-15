@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useSessionStore } from '@/store/useSessionStore';
+import { API_URL } from '@/config/api';
 
 interface BluffingRound {
   id: string;
@@ -21,36 +23,81 @@ interface Props {
 export function BluffingController({ round, mySubmission, myVote, socket }: Props) {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [localSubmission, setLocalSubmission] = useState<string | null>(null);
   const [localVote, setLocalVote] = useState<string | null>(null);
 
+  const myPlayerId = useSessionStore((s) => s.snapshot?.myPlayer?.id);
+  const activeSubmissionText = mySubmission?.content?.text || localSubmission;
   const activeVote = myVote || localVote;
 
   const handleSubmit = async () => {
     if (!inputText.trim() || sending) return;
+    const textToSubmit = inputText.trim();
     setSending(true);
-    socket?.emit('PARTY_SUBMIT_INPUT', {
+    setLocalSubmission(textToSubmit);
+
+    const payload = {
       roundId: round.id,
-      content: { text: inputText.trim() },
-    });
+      content: { text: textToSubmit },
+      playerId: myPlayerId,
+    };
+
+    // 1. WebSocket en tiempo real
+    socket?.emit('PARTY_SUBMIT_INPUT', payload);
+
+    // 2. Respaldo HTTP REST garantizado
+    if (myPlayerId) {
+      try {
+        await fetch(`${API_URL}/party-games/rounds/${round.id}/input`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId: myPlayerId, content: { text: textToSubmit } }),
+        });
+      } catch (err) {
+        console.warn('Fallback REST input mentiroso:', err);
+      }
+    }
+
     setTimeout(() => setSending(false), 1000);
   };
 
-  const handleVote = (targetId: string) => {
+  const handleVote = async (targetId: string) => {
     if (activeVote) return;
     setLocalVote(targetId);
-    socket?.emit('PARTY_CAST_VOTE', { roundId: round.id, targetId });
+
+    const payload = {
+      roundId: round.id,
+      targetId,
+      playerId: myPlayerId,
+    };
+
+    // 1. WebSocket
+    socket?.emit('PARTY_CAST_VOTE', payload);
+
+    // 2. Respaldo HTTP REST garantizado
+    if (myPlayerId) {
+      try {
+        await fetch(`${API_URL}/party-games/rounds/${round.id}/vote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ playerId: myPlayerId, targetId }),
+        });
+      } catch (err) {
+        console.warn('Fallback REST vote mentiroso:', err);
+      }
+    }
   };
 
   // Fase INPUT
   if (round.phase === 'INPUT') {
-    if (mySubmission) {
+    if (activeSubmissionText) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
-          <div className="text-6xl">✅</div>
+          <div className="text-6xl animate-bounce">✅</div>
           <h3 className="text-2xl font-black text-white">¡Respuesta enviada!</h3>
           <div className="bg-white/10 rounded-2xl border border-white/20 p-4 w-full max-w-sm">
             <p className="text-white/60 text-sm mb-1">Tu respuesta</p>
-            <p className="text-xl font-bold text-amber-400">"{mySubmission.content?.text}"</p>
+            <p className="text-xl font-bold text-amber-400">"{activeSubmissionText}"</p>
           </div>
           <p className="text-white/50">
             {round.submittedCount}/{round.totalPlayers} jugadores respondieron
@@ -87,7 +134,7 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
           id="bluffing-submit-btn"
           onClick={handleSubmit}
           disabled={!inputText.trim() || sending}
-          className="w-full py-4 bg-amber-400 text-black font-black text-xl rounded-2xl disabled:opacity-40 active:scale-95 transition-all"
+          className="w-full py-4 bg-amber-400 hover:bg-amber-300 text-black font-black text-xl rounded-2xl disabled:opacity-40 active:scale-95 transition-all cursor-pointer shadow-lg shadow-amber-400/20"
         >
           {sending ? 'Enviando...' : '🃏 Enviar Respuesta'}
         </button>
@@ -118,7 +165,7 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
                 key={opt.id}
                 id={`bluffing-vote-${idx}`}
                 onClick={() => handleVote(opt.id)}
-                className="w-full flex items-center gap-4 bg-white/10 border border-white/20 rounded-2xl p-4 text-left active:scale-95 transition-all hover:border-amber-400/50"
+                className="w-full flex items-center gap-4 bg-white/10 border border-white/20 rounded-2xl p-4 text-left active:scale-95 transition-all hover:border-amber-400/50 cursor-pointer"
               >
                 <span className="text-2xl font-black text-amber-400">{String.fromCharCode(65 + idx)}</span>
                 <span className="text-lg text-white font-medium">{opt.text}</span>

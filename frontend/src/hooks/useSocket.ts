@@ -141,15 +141,15 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     });
 
     // Confirmación de input de Party Games: actualizar mySubmission en el store inmediatamente
-    socket.on('PARTY_INPUT_ACCEPTED', (payload: { roundId: string }) => {
+    socket.on('PARTY_INPUT_ACCEPTED', (payload: { roundId: string; content?: any }) => {
       const store = useSessionStore.getState();
       const snap = store.snapshot;
       if (!snap) return;
       const activeRound = snap.partyGame?.activeRound;
       if (!activeRound || activeRound.id !== payload?.roundId) return;
-      // El contenido real llega vía snapshot; aquí solo marcamos que fue aceptado
+      // El contenido real llega vía snapshot o ACK; aquí marcamos que fue aceptado
       // para que el componente cambie de vista sin esperar el polling REST
-      store.applyEvent('PARTY_MY_SUBMISSION_ACCEPTED', { roundId: payload.roundId });
+      store.applyEvent('PARTY_MY_SUBMISSION_ACCEPTED', payload);
     });
 
     // Confirmación de TUTIFRUTI / BASTA de Party Games: actualizar mySubmission en el store
