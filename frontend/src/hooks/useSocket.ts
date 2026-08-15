@@ -54,7 +54,13 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
       useSessionStore.getState().setConnected(true);
 
       const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
-      socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+      let currentNickname = nickname;
+      let currentPlayerId = playerId;
+      if (typeof window !== 'undefined' && !isTv && !isAdmin) {
+        currentNickname = localStorage.getItem(`pulsobet_nickname:${sessionId}`) || nickname;
+        currentPlayerId = localStorage.getItem(`pulsobet_player_id:${sessionId}`) || playerId;
+      }
+      socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname: currentNickname, playerId: currentPlayerId });
 
       // Reenviar eventos Party encolados mientras estaba desconectado
       const queued = partyQueueRef.current;
@@ -65,7 +71,13 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
     socket.on('reconnect', () => {
       useSessionStore.getState().setConnected(true);
       const deviceType = isTv ? 'tv' : (isAdmin ? 'admin' : 'player');
-      socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname, playerId });
+      let currentNickname = nickname;
+      let currentPlayerId = playerId;
+      if (typeof window !== 'undefined' && !isTv && !isAdmin) {
+        currentNickname = localStorage.getItem(`pulsobet_nickname:${sessionId}`) || nickname;
+        currentPlayerId = localStorage.getItem(`pulsobet_player_id:${sessionId}`) || playerId;
+      }
+      socket.emit('JOIN_SESSION', { sessionId, type: deviceType, nickname: currentNickname, playerId: currentPlayerId });
 
       const queued = partyQueueRef.current;
       partyQueueRef.current = [];
@@ -243,13 +255,19 @@ export const useSocket = (sessionId?: string, isTv: boolean = false, isAdmin: bo
 
   // Tras el registro del jugador, el socket (que conectó sin token al montar la página)
   // debe reconectar con el JWT para que submit_prediction pase el WsJwtGuard.
-  const reconnectWithToken = useCallback((token: string) => {
+  const reconnectWithToken = useCallback((newToken: string) => {
     if (socketRef.current) {
-      socketRef.current.auth = { token };
+      socketRef.current.auth = { token: newToken };
+      if (socketRef.current.io?.opts) {
+        socketRef.current.io.opts.query = {
+          token: newToken,
+          sessionId,
+        };
+      }
       socketRef.current.disconnect();
       socketRef.current.connect();
     }
-  }, []);
+  }, [sessionId]);
 
   const emitPartyEvent = useCallback((event: string, data: any) => {
     if (socketRef.current?.connected) {

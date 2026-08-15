@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSessionStore } from '@/store/useSessionStore';
 import { API_URL } from '@/config/api';
 
 interface BluffingRound {
   id: string;
+  sessionId?: string;
   phase: string;
   prompt: string;
   submittedCount: number;
@@ -25,8 +26,34 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
   const [sending, setSending] = useState(false);
   const [localSubmission, setLocalSubmission] = useState<string | null>(null);
   const [localVote, setLocalVote] = useState<string | null>(null);
+  const [localPlayerId, setLocalPlayerId] = useState<string | undefined>(undefined);
+  const [localToken, setLocalToken] = useState<string | undefined>(undefined);
 
-  const myPlayerId = useSessionStore((s) => s.snapshot?.myPlayer?.id);
+  const storePlayerId = useSessionStore((s) => s.snapshot?.myPlayer?.id);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedId =
+        (round.sessionId ? localStorage.getItem(`pulsobet_player_id:${round.sessionId}`) : null) ||
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('pulsobet_player_id:'))
+          .map((k) => localStorage.getItem(k))
+          .find(Boolean) ||
+        undefined;
+      if (savedId) setLocalPlayerId(savedId);
+
+      const savedToken =
+        (round.sessionId ? localStorage.getItem(`pulsobet_player_token:${round.sessionId}`) : null) ||
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('pulsobet_player_token:'))
+          .map((k) => localStorage.getItem(k))
+          .find(Boolean) ||
+        undefined;
+      if (savedToken) setLocalToken(savedToken);
+    }
+  }, [round.sessionId]);
+
+  const myPlayerId = storePlayerId || localPlayerId;
   const activeSubmissionText = mySubmission?.content?.text || localSubmission;
   const activeVote = myVote || localVote;
 
@@ -40,6 +67,7 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
       roundId: round.id,
       content: { text: textToSubmit },
       playerId: myPlayerId,
+      token: localToken,
     };
 
     // 1. WebSocket en tiempo real
@@ -50,7 +78,10 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
       try {
         await fetch(`${API_URL}/party-games/rounds/${round.id}/input`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           body: JSON.stringify({ playerId: myPlayerId, content: { text: textToSubmit } }),
         });
       } catch (err) {
@@ -69,6 +100,7 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
       roundId: round.id,
       targetId,
       playerId: myPlayerId,
+      token: localToken,
     };
 
     // 1. WebSocket
@@ -79,7 +111,10 @@ export function BluffingController({ round, mySubmission, myVote, socket }: Prop
       try {
         await fetch(`${API_URL}/party-games/rounds/${round.id}/vote`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           body: JSON.stringify({ playerId: myPlayerId, targetId }),
         });
       } catch (err) {

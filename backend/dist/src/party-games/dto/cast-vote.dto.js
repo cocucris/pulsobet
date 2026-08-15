@@ -14,6 +14,8 @@ const class_validator_1 = require("class-validator");
 class CastPartyVoteDto {
     roundId;
     targetId;
+    playerId;
+    token;
 }
 exports.CastPartyVoteDto = CastPartyVoteDto;
 __decorate([
@@ -26,4 +28,14 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)({ message: 'El targetId (submissionId o playerId) es requerido.' }),
     __metadata("design:type", String)
 ], CastPartyVoteDto.prototype, "targetId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CastPartyVoteDto.prototype, "playerId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CastPartyVoteDto.prototype, "token", void 0);
 //# sourceMappingURL=cast-vote.dto.js.map

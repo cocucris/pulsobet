@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CastPartyVoteDto {
   @IsString()
@@ -8,4 +8,12 @@ export class CastPartyVoteDto {
   @IsString()
   @IsNotEmpty({ message: 'El targetId (submissionId o playerId) es requerido.' })
   targetId: string;
+
+  @IsOptional()
+  @IsString()
+  playerId?: string;
+
+  @IsOptional()
+  @IsString()
+  token?: string;
 }
