@@ -1,7 +1,12 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useSessionStore } from '@/store/useSessionStore';
+import { API_URL } from '@/config/api';
+
 interface SocialJudgmentRound {
   id: string;
+  sessionId?: string;
   phase: string;
   prompt: string;
   options: { id: string; nickname: string }[];
@@ -14,15 +19,72 @@ interface Props {
 }
 
 export function SocialJudgmentController({ round, myVote, socket }: Props) {
-  const handleVote = (playerId: string) => {
-    if (myVote) return;
-    socket?.emit('PARTY_CAST_VOTE', { roundId: round.id, targetId: playerId });
+  const [localVote, setLocalVote] = useState<string | null>(null);
+  const [localPlayerId, setLocalPlayerId] = useState<string | undefined>(undefined);
+  const [localToken, setLocalToken] = useState<string | undefined>(undefined);
+
+  const storePlayerId = useSessionStore((s) => s.snapshot?.myPlayer?.id);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedId =
+        (round.sessionId ? localStorage.getItem(`pulsobet_player_id:${round.sessionId}`) : null) ||
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('pulsobet_player_id:'))
+          .map((k) => localStorage.getItem(k))
+          .find(Boolean) ||
+        undefined;
+      if (savedId) setLocalPlayerId(savedId);
+
+      const savedToken =
+        (round.sessionId ? localStorage.getItem(`pulsobet_player_token:${round.sessionId}`) : null) ||
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('pulsobet_player_token:'))
+          .map((k) => localStorage.getItem(k))
+          .find(Boolean) ||
+        undefined;
+      if (savedToken) setLocalToken(savedToken);
+    }
+  }, [round.sessionId]);
+
+  const myPlayerId = storePlayerId || localPlayerId;
+  const activeVote = myVote || localVote;
+
+  const handleVote = async (targetPlayerId: string) => {
+    if (activeVote) return;
+    setLocalVote(targetPlayerId);
+
+    const payload = {
+      roundId: round.id,
+      targetId: targetPlayerId,
+      playerId: myPlayerId,
+      token: localToken,
+    };
+
+    // 1. WebSocket en tiempo real
+    socket?.emit('PARTY_CAST_VOTE', payload);
+
+    // 2. Respaldo HTTP REST garantizado
+    if (myPlayerId) {
+      try {
+        await fetch(`${API_URL}/party-games/rounds/${round.id}/vote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
+          body: JSON.stringify({ playerId: myPlayerId, targetId: targetPlayerId }),
+        });
+      } catch (err) {
+        console.warn('Fallback REST vote juicio social:', err);
+      }
+    }
   };
 
-  if (myVote) {
+  if (activeVote) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center">
-        <div className="text-6xl">🔮</div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-6 text-center animate-fade-in">
+        <div className="text-6xl animate-bounce">🔮</div>
         <h3 className="text-2xl font-black text-white">¡Voto secreto registrado!</h3>
         <p className="text-white/50">Mirá la pantalla para ver los resultados en vivo</p>
       </div>
@@ -44,9 +106,9 @@ export function SocialJudgmentController({ round, myVote, socket }: Props) {
             key={player.id}
             id={`social-vote-${idx}`}
             onClick={() => handleVote(player.id)}
-            className="flex flex-col items-center gap-2 bg-white/10 border border-white/20 rounded-2xl p-4 active:scale-95 transition-all hover:border-violet-400/50 hover:bg-violet-500/10"
+            className="flex flex-col items-center gap-2 bg-white/10 border border-white/20 rounded-2xl p-4 active:scale-95 transition-all hover:border-violet-400/50 hover:bg-violet-500/10 cursor-pointer"
           >
-            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-2xl font-black text-white">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center text-2xl font-black text-white shadow-md">
               {player.nickname.charAt(0).toUpperCase()}
             </div>
             <span className="text-white font-semibold text-sm truncate w-full text-center">

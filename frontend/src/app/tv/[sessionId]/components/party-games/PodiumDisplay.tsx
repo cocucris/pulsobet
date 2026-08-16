@@ -10,7 +10,15 @@ interface PodiumEntry {
 
 const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
-export function PodiumDisplay({ leaderboard }: { leaderboard: PodiumEntry[] }) {
+export function PodiumDisplay({
+  leaderboard,
+  title = '¡Gran Ganador!',
+  subtitle,
+}: {
+  leaderboard: PodiumEntry[];
+  title?: string;
+  subtitle?: string;
+}) {
   const top3 = leaderboard.slice(0, 3);
   const rest = leaderboard.slice(3, 10);
   const winner = top3[0];
@@ -35,8 +43,11 @@ export function PodiumDisplay({ leaderboard }: { leaderboard: PodiumEntry[] }) {
       <div className="text-center z-10">
         <div className="text-6xl mb-2 animate-bounce">🏆</div>
         <h2 className="text-5xl font-black text-amber-400 tracking-widest uppercase drop-shadow-[0_0_30px_rgba(245,158,11,0.5)]">
-          ¡Gran Ganador!
+          {title}
         </h2>
+        {subtitle && (
+          <p className="text-xl font-bold text-amber-300/80 mt-1">{subtitle}</p>
+        )}
         {winner && (
           <p className="text-4xl font-black text-white mt-2 animate-pulse">{winner.nickname}</p>
         )}

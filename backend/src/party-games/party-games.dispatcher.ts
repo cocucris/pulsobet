@@ -101,8 +101,12 @@ export class PartyGamesDispatcher {
       this.logger.log(`[PartyDispatcher] PARTY_ROUND_FINISHED → sesión ${event.sessionId}`);
       this.liveGateway.broadcastToSession(event.sessionId, 'PARTY_ROUND_FINISHED', {
         roundId: event.roundId,
+        leaderboard: event.leaderboard,
         eventNumber: event.eventNumber,
       });
+      if (event.leaderboard && event.leaderboard.length > 0) {
+        this.liveGateway.broadcastToSession(event.sessionId, 'leaderboard_update', event.leaderboard);
+      }
     } catch (e) {
       this.logger.error(`Error en handlePartyRoundFinished: ${e.message}`);
     }

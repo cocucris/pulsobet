@@ -152,6 +152,8 @@ export interface SessionSnapshot {
     } | null;
     mySubmission: any | null;
     myVote: string | null;
+    // Ranking / podio consolidado (entre rondas o fin de juego)
+    leaderboard?: { rank: number; id: string; nickname: string; totalPoints: number; streakCount: number }[] | null;
     // Podio definitivo cuando el admin finaliza el juego completo
     gameOver?: {
       leaderboard: { rank: number; id: string; nickname: string; totalPoints: number; streakCount: number }[];
@@ -722,7 +724,14 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         set({
           snapshot: {
             ...snapshot,
-            partyGame: { activeRound: null, mySubmission: null, myVote: null },
+            leaderboardTop10: payload?.leaderboard || snapshot.leaderboardTop10,
+            partyGame: {
+              activeRound: null,
+              mySubmission: null,
+              myVote: null,
+              gameOver: null,
+              leaderboard: payload?.leaderboard || snapshot.partyGame?.leaderboard || snapshot.leaderboardTop10,
+            },
           },
           lastEventNumber: nextEventNumber,
         });

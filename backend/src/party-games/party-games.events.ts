@@ -66,6 +66,7 @@ export class PartyRoundFinishedEvent {
   constructor(
     public readonly sessionId: string,
     public readonly roundId: string,
+    public readonly leaderboard: any[],
     public readonly eventNumber: number,
   ) {}
 }

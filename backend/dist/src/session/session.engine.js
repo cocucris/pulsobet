@@ -222,7 +222,7 @@ let SessionEngine = SessionEngine_1 = class SessionEngine {
             });
             myCardVotes = Object.fromEntries(votes.map((v) => [v.cardId, v.choice]));
         }
-        let partyGame = { activeRound: null, mySubmission: null, myVote: null };
+        let partyGame = { activeRound: null, mySubmission: null, myVote: null, leaderboard: leaderboardTop10 };
         try {
             const activePartyRound = await this.prisma.partyGameRound.findFirst({
                 where: { sessionId: actualSessionId, phase: { not: 'FINISHED' } },

@@ -270,7 +270,7 @@ export class SessionEngine {
     }
 
     // 7. Party Games: ronda activa en la sesión (si mode === 'PARTY_GAMES')
-    let partyGame: any = { activeRound: null, mySubmission: null, myVote: null };
+    let partyGame: any = { activeRound: null, mySubmission: null, myVote: null, leaderboard: leaderboardTop10 };
     try {
       const activePartyRound = await this.prisma.partyGameRound.findFirst({
         where: { sessionId: actualSessionId, phase: { not: 'FINISHED' } },

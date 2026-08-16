@@ -439,6 +439,16 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         this.logger.log(`[PartyGames] Ronda ${roundId} → REVEAL`);
     }
     async finishRound(roundId, sessionId) {
+        const round = await this.prisma.partyGameRound.findUnique({
+            where: { id: roundId },
+            include: {
+                submissions: { include: { player: true } },
+                votes: true,
+            },
+        });
+        if (round && round.phase !== 'REVEAL' && round.phase !== 'FINISHED') {
+            await this.calculateAndAwardPoints(round);
+        }
         await this.prisma.partyGameRound.update({
             where: { id: roundId },
             data: { phase: 'FINISHED', finishedAt: new Date() },
@@ -447,9 +457,10 @@ let PartyGamesService = PartyGamesService_1 = class PartyGamesService {
         this.scheduler.cancelTimer(`party-voting-${roundId}`);
         this.scheduler.cancelTimer(`party-countdown-${roundId}`);
         this.scheduler.cancelTimer(`party-basta-grace-${roundId}`);
+        const leaderboard = await this.getLeaderboard(sessionId);
         const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
-        this.eventEmitter.emit('party.round.finished', new party_games_events_1.PartyRoundFinishedEvent(sessionId, roundId, eventNumber));
-        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'FINISHED', {}, eventNumber));
+        this.eventEmitter.emit('party.round.finished', new party_games_events_1.PartyRoundFinishedEvent(sessionId, roundId, leaderboard, eventNumber));
+        this.eventEmitter.emit('party.phase.changed', new party_games_events_1.PartyPhaseChangedEvent(sessionId, roundId, 'FINISHED', { leaderboard }, eventNumber));
         this.logger.log(`[PartyGames] Ronda ${roundId} → FINISHED`);
     }
     async calculateAndAwardPoints(round) {

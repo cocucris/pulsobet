@@ -599,6 +599,20 @@ export class PartyGamesService {
   }
 
   private async finishRound(roundId: string, sessionId: string) {
+    const round = await this.prisma.partyGameRound.findUnique({
+      where: { id: roundId },
+      include: {
+        submissions: { include: { player: true } },
+        votes: true,
+      },
+    });
+
+    if (round && round.phase !== 'REVEAL' && round.phase !== 'FINISHED') {
+      // Si la ronda se cerró antes de REVEAL (ej: cerraron desde INPUT o VOTING),
+      // calculamos y asignamos los puntos para que los jugadores reciban sus puntos ganados!
+      await this.calculateAndAwardPoints(round);
+    }
+
     await this.prisma.partyGameRound.update({
       where: { id: roundId },
       data: { phase: 'FINISHED', finishedAt: new Date() },
@@ -609,16 +623,17 @@ export class PartyGamesService {
     this.scheduler.cancelTimer(`party-countdown-${roundId}`);
     this.scheduler.cancelTimer(`party-basta-grace-${roundId}`);
 
+    const leaderboard = await this.getLeaderboard(sessionId);
     const eventNumber = await this.sessionCache.incrementEventNumber(sessionId);
 
     this.eventEmitter.emit(
       'party.round.finished',
-      new PartyRoundFinishedEvent(sessionId, roundId, eventNumber),
+      new PartyRoundFinishedEvent(sessionId, roundId, leaderboard, eventNumber),
     );
 
     this.eventEmitter.emit(
       'party.phase.changed',
-      new PartyPhaseChangedEvent(sessionId, roundId, 'FINISHED', {}, eventNumber),
+      new PartyPhaseChangedEvent(sessionId, roundId, 'FINISHED', { leaderboard }, eventNumber),
     );
 
     this.logger.log(`[PartyGames] Ronda ${roundId} → FINISHED`);

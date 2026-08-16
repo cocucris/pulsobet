@@ -38,14 +38,24 @@ export function PartyGamesController({ socket }: Props) {
     );
   }
 
-  if (!partyGame?.activeRound) {
+  if (!partyGame?.activeRound || partyGame.activeRound.phase === 'FINISHED') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-6">
-        <div className="text-7xl">🎮</div>
-        <h2 className="text-2xl font-black text-white text-center">Party Games</h2>
-        <p className="text-white/50 text-center">
-          El Admin está preparando la siguiente ronda...
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 p-6 text-center animate-fade-in">
+        <div className="text-6xl animate-bounce">🏆</div>
+        <h2 className="text-2xl font-black text-amber-400">Ronda Finalizada</h2>
+        {myPlayer && (
+          <div className="bg-white/10 border border-white/20 rounded-2xl p-5 w-full max-w-sm">
+            <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Tu puntaje acumulado</p>
+            <p className="text-3xl font-black text-amber-400 font-mono">{myPlayer.totalPoints} Pts</p>
+            {myPlayer.rank && (
+              <p className="text-white/80 font-bold mt-2">
+                Puesto <span className="text-emerald-400 font-black">#{myPlayer.rank}</span> en el ranking
+              </p>
+            )}
+          </div>
+        )}
+        <p className="text-white/50 text-sm">Mirá la pantalla para ver el podio de los ganadores ☝️</p>
+        <p className="text-white/30 text-xs animate-pulse">El Admin está preparando la siguiente ronda...</p>
       </div>
     );
   }

@@ -88,10 +88,12 @@ exports.PartyRoundResultEvent = PartyRoundResultEvent;
 class PartyRoundFinishedEvent {
     sessionId;
     roundId;
+    leaderboard;
     eventNumber;
-    constructor(sessionId, roundId, eventNumber) {
+    constructor(sessionId, roundId, leaderboard, eventNumber) {
         this.sessionId = sessionId;
         this.roundId = roundId;
+        this.leaderboard = leaderboard;
         this.eventNumber = eventNumber;
     }
 }

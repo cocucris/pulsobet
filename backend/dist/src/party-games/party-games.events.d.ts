@@ -46,8 +46,9 @@ export declare class PartyRoundResultEvent {
 export declare class PartyRoundFinishedEvent {
     readonly sessionId: string;
     readonly roundId: string;
+    readonly leaderboard: any[];
     readonly eventNumber: number;
-    constructor(sessionId: string, roundId: string, eventNumber: number);
+    constructor(sessionId: string, roundId: string, leaderboard: any[], eventNumber: number);
 }
 export declare class PartyGameOverEvent {
     readonly sessionId: string;
