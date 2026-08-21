@@ -275,23 +275,24 @@ let BarService = class BarService {
         }
         const BOM = '\uFEFF';
         const lines = [];
+        lines.push('sep=;');
         lines.push(`REPORTE CONTABLE Y AUDITORIA DE CANJES DE PREMIOS - PULSOBET`);
-        lines.push(`Local: "${barName}" (ID: ${barId})`);
-        lines.push(`Periodo: "${dto.preset}" (${start.toLocaleDateString()} al ${end.toLocaleDateString()})`);
-        lines.push(`Fecha de Emision: "${new Date().toLocaleString()}"`);
+        lines.push(`Local;${barName};ID;${barId}`);
+        lines.push(`Periodo;${dto.preset};Rango;${start.toLocaleDateString('es-PY')} al ${end.toLocaleDateString('es-PY')}`);
+        lines.push(`Fecha de Emision;${new Date().toLocaleString('es-PY')}`);
         lines.push(``);
         lines.push(`--- RESUMEN CONTABLE POR PRODUCTO / PREMIO ---`);
-        lines.push(`Producto / Premio,Costo Puntos,Total Solicitados,Entregados en Barra,Pendientes,Puntos Totales Consumidos,% Participacion`);
+        lines.push(`Producto / Premio;Costo Puntos;Total Solicitados;Entregados en Barra;Pendientes;Puntos Totales Consumidos;% Participacion`);
         const summaryRows = Object.values(productSummaryMap);
         for (const item of summaryRows) {
             const share = grandTotalClaims > 0 ? ((item.totalClaims / grandTotalClaims) * 100).toFixed(1) + '%' : '0%';
-            lines.push(`"${item.title}",${item.pointsCost},${item.totalClaims},${item.redeemed},${item.pending},${item.totalPointsSpent},"${share}"`);
+            lines.push(`"${item.title}";${item.pointsCost};${item.totalClaims};${item.redeemed};${item.pending};${item.totalPointsSpent};"${share}"`);
         }
-        lines.push(`"TOTAL GENERAL",-,${grandTotalClaims},${grandTotalRedeemed},${grandTotalClaims - grandTotalRedeemed},${grandTotalPointsSpent},"100%"`);
+        lines.push(`"TOTAL GENERAL";"-";${grandTotalClaims};${grandTotalRedeemed};${grandTotalClaims - grandTotalRedeemed};${grandTotalPointsSpent};"100%"`);
         lines.push(``);
         lines.push(``);
         lines.push(`--- LOG DETALLADO DE TRANSACCIONES ---`);
-        lines.push(`Codigo Canje,Producto / Premio,Puntos Costo,Cliente / Jugador,Mesa,Estado,Fecha y Hora`);
+        lines.push(`Codigo Canje;Producto / Premio;Puntos Costo;Cliente / Jugador;Mesa;Estado;Fecha y Hora`);
         for (const c of claims) {
             const dateFormatted = new Date(c.createdAt).toLocaleString('es-PY', {
                 day: '2-digit',
@@ -302,9 +303,9 @@ let BarService = class BarService {
                 second: '2-digit',
             });
             const estado = c.isRedeemed ? 'ENTREGADO EN BARRA' : 'PENDIENTE EN BARRA';
-            lines.push(`"${c.claimCode}","${c.reward.title}",${c.reward.pointsCost},"${c.player.nickname}","${c.player.tableNumber || 'N/A'}","${estado}","${dateFormatted}"`);
+            lines.push(`"${c.claimCode}";"${c.reward.title}";${c.reward.pointsCost};"${c.player.nickname}";"${c.player.tableNumber || 'N/A'}";"${estado}";"${dateFormatted}"`);
         }
-        return BOM + lines.join('\n');
+        return BOM + lines.join('\r\n');
     }
 };
 exports.BarService = BarService;
